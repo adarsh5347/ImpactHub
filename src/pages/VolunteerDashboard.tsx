@@ -1,0 +1,316 @@
+import { Users, Clock, Award, MapPin, Calendar, CheckCircle2, Filter } from 'lucide-react';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Badge } from '../components/ui/badge';
+import { Input } from '../components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { mockVolunteerOpportunities } from '../lib/mock-data';
+import { useState } from 'react';
+
+interface VolunteerDashboardProps {
+  onNavigate: (page: string, params?: any) => void;
+}
+
+export function VolunteerDashboard({ onNavigate }: VolunteerDashboardProps) {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSkill, setSelectedSkill] = useState('all');
+
+  // Mock volunteer stats
+  const volunteerStats = {
+    hoursContributed: 120,
+    projectsJoined: 3,
+    certificatesEarned: 2,
+  };
+
+  const allSkills = ['all', 'Teaching', 'Healthcare', 'Event Management', 'Business Management', 'Communication'];
+
+  const filteredOpportunities = mockVolunteerOpportunities.filter((opp) => {
+    const matchesSearch = opp.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                         opp.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSkill = selectedSkill === 'all' || opp.skills.includes(selectedSkill);
+    return matchesSearch && matchesSkill;
+  });
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+      {/* Header */}
+      <div className="mb-8">
+        <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
+          Volunteer Dashboard
+        </h1>
+        <p className="text-lg text-gray-600">
+          Find opportunities to make a difference with your time and skills
+        </p>
+      </div>
+
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
+                <Clock className="w-6 h-6 text-white" />
+              </div>
+            </div>
+            <div className="text-3xl font-bold text-gray-900 mb-1">
+              {volunteerStats.hoursContributed}
+            </div>
+            <div className="text-sm text-gray-700">Hours Contributed</div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+            </div>
+            <div className="text-3xl font-bold text-gray-900 mb-1">
+              {volunteerStats.projectsJoined}
+            </div>
+            <div className="text-sm text-gray-700">Projects Joined</div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center">
+                <Award className="w-6 h-6 text-white" />
+              </div>
+            </div>
+            <div className="text-3xl font-bold text-gray-900 mb-1">
+              {volunteerStats.certificatesEarned}
+            </div>
+            <div className="text-sm text-gray-700">Certificates Earned</div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Main Content - Available Opportunities */}
+        <div className="lg:col-span-2 space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle>Available Opportunities</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {/* Search and Filter */}
+              <div className="flex flex-col md:flex-row gap-4">
+                <Input
+                  type="text"
+                  placeholder="Search opportunities..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="flex-1 bg-white"
+                />
+                <Select value={selectedSkill} onValueChange={setSelectedSkill}>
+                  <SelectTrigger className="bg-white md:w-48">
+                    <SelectValue placeholder="Filter by skill" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allSkills.map((skill) => (
+                      <SelectItem key={skill} value={skill}>
+                        {skill === 'all' ? 'All Skills' : skill}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Opportunities List */}
+              <div className="space-y-4">
+                {filteredOpportunities.map((opportunity) => (
+                  <Card key={opportunity.id} className="hover:shadow-md transition-shadow">
+                    <CardContent className="p-6">
+                      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                        <div className="flex-1">
+                          <div className="flex items-start gap-3 mb-3">
+                            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                              <Users className="w-6 h-6 text-primary" />
+                            </div>
+                            <div className="flex-1">
+                              <h3 className="font-semibold text-gray-900 mb-1">
+                                {opportunity.title}
+                              </h3>
+                              <p className="text-sm text-gray-600 mb-2">{opportunity.ngoName}</p>
+                              <p className="text-sm text-gray-700 mb-3">{opportunity.description}</p>
+                            </div>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 mb-3">
+                            {opportunity.skills.map((skill) => (
+                              <Badge key={skill} variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                {skill}
+                              </Badge>
+                            ))}
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm text-gray-600">
+                            <div className="flex items-center gap-1">
+                              <MapPin className="w-4 h-4" />
+                              <span>{opportunity.location}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              <span>{opportunity.duration}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              <span>{opportunity.commitment}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex flex-col gap-2 md:min-w-[150px]">
+                          {opportunity.spotsAvailable > 0 ? (
+                            <>
+                              <p className="text-sm text-gray-600 text-center">
+                                {opportunity.spotsAvailable} spots left
+                              </p>
+                              <Button className="bg-secondary hover:bg-secondary/90">
+                                Apply Now
+                              </Button>
+                            </>
+                          ) : (
+                            <Button disabled variant="outline">
+                              Spots Filled
+                            </Button>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {filteredOpportunities.length === 0 && (
+                <div className="text-center py-12">
+                  <Filter className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <h3 className="font-semibold text-gray-900 mb-2">No Opportunities Found</h3>
+                  <p className="text-gray-600">Try adjusting your search or filters</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Sidebar */}
+        <div className="space-y-6">
+          {/* My Active Engagements */}
+          <Card>
+            <CardHeader>
+              <CardTitle>My Active Engagements</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="p-4 bg-blue-50 rounded-lg">
+                <h4 className="font-semibold text-gray-900 mb-1">Computer Science Teacher</h4>
+                <p className="text-sm text-gray-600 mb-2">Education for All Foundation</p>
+                <div className="flex items-center gap-2 text-sm text-gray-700 mb-3">
+                  <Clock className="w-4 h-4" />
+                  <span>40 hours completed</span>
+                </div>
+                <Button variant="outline" size="sm" className="w-full">
+                  View Details
+                </Button>
+              </div>
+
+              <div className="p-4 bg-green-50 rounded-lg">
+                <h4 className="font-semibold text-gray-900 mb-1">Medical Assistant</h4>
+                <p className="text-sm text-gray-600 mb-2">Health First Community</p>
+                <div className="flex items-center gap-2 text-sm text-gray-700 mb-3">
+                  <Clock className="w-4 h-4" />
+                  <span>30 hours completed</span>
+                </div>
+                <Button variant="outline" size="sm" className="w-full">
+                  View Details
+                </Button>
+              </div>
+
+              <div className="p-4 bg-yellow-50 rounded-lg">
+                <h4 className="font-semibold text-gray-900 mb-1">Tree Planting Coordinator</h4>
+                <p className="text-sm text-gray-600 mb-2">Green Earth Initiative</p>
+                <div className="flex items-center gap-2 text-sm text-gray-700 mb-3">
+                  <Clock className="w-4 h-4" />
+                  <span>50 hours completed</span>
+                </div>
+                <Button variant="outline" size="sm" className="w-full">
+                  View Details
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Skills & Availability */}
+          <Card>
+            <CardHeader>
+              <CardTitle>My Profile</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-2">My Skills</h4>
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    Teaching
+                  </Badge>
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    Healthcare
+                  </Badge>
+                  <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                    Communication
+                  </Badge>
+                </div>
+              </div>
+
+              <div>
+                <h4 className="font-semibold text-gray-900 mb-2">Availability</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    <span className="text-gray-700">Weekends</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    <span className="text-gray-700">10 hours/week</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-green-600" />
+                    <span className="text-gray-700">Remote & In-person</span>
+                  </div>
+                </div>
+              </div>
+
+              <Button variant="outline" className="w-full">
+                Update Profile
+              </Button>
+            </CardContent>
+          </Card>
+
+          {/* Certificates */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Certificates</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                <Award className="w-8 h-8 text-green-600" />
+                <div className="flex-1">
+                  <p className="font-semibold text-sm text-gray-900">Education Volunteer</p>
+                  <p className="text-xs text-gray-600">Dec 2024</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                <Award className="w-8 h-8 text-green-600" />
+                <div className="flex-1">
+                  <p className="font-semibold text-sm text-gray-900">Healthcare Support</p>
+                  <p className="text-xs text-gray-600">Nov 2024</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>
+  );
+}
