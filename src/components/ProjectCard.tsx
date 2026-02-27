@@ -1,23 +1,28 @@
-import { MapPin, Calendar, Users, TrendingUp } from 'lucide-react';
+import { MapPin, Users } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { StatusBadge } from './StatusBadge';
 import { Badge } from './ui/badge';
-import { Project } from '../lib/mock-data';
+import type { Project } from '../lib/api/types';
 
 interface ProjectCardProps {
   project: Project;
-  onViewDetails: (projectId: string) => void;
+  onViewDetails: (projectId: string | number) => void;
 }
 
 export function ProjectCard({ project, onViewDetails }: ProjectCardProps) {
-  const volunteersRemaining = project.volunteersNeeded - project.volunteersEnrolled;
+  const volunteersNeeded = project.volunteersNeeded ?? 0;
+  const volunteersEnrolled = project.volunteersEnrolled ?? 0;
+  const volunteersRemaining = Math.max(volunteersNeeded - volunteersEnrolled, 0);
+  const imageUrl = project.imageUrl || 'https://images.unsplash.com/photo-1488521787991-ed7bbaae773c?w=600&h=400&fit=crop';
+  const beneficiaries = project.beneficiaries ?? 0;
+  const location = project.location || 'India';
 
   return (
     <Card className="overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all duration-300 cursor-pointer group">
       <div className="aspect-[16/9] overflow-hidden bg-gray-100 relative">
         <img
-          src={project.image}
+          src={imageUrl}
           alt={project.title}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
@@ -43,12 +48,12 @@ export function ProjectCard({ project, onViewDetails }: ProjectCardProps) {
         <div className="flex items-center text-sm text-gray-500 gap-3 mb-4">
           <div className="flex items-center gap-1">
             <MapPin className="w-3.5 h-3.5" />
-            <span>{project.location.split(',')[0]}</span>
+            <span>{location.split(',')[0]}</span>
           </div>
           <div className="text-gray-400">•</div>
           <div className="flex items-center gap-1">
             <Users className="w-3.5 h-3.5" />
-            <span>{project.beneficiaries >= 1000 ? `${(project.beneficiaries / 1000).toFixed(0)}K` : project.beneficiaries} impacted</span>
+            <span>{beneficiaries >= 1000 ? `${(beneficiaries / 1000).toFixed(0)}K` : beneficiaries} impacted</span>
           </div>
         </div>
 
@@ -57,13 +62,13 @@ export function ProjectCard({ project, onViewDetails }: ProjectCardProps) {
           <div className="flex justify-between items-center mb-2">
             <span className="text-sm text-gray-600">Volunteers</span>
             <span className="text-sm font-semibold text-secondary">
-              {project.volunteersEnrolled} of {project.volunteersNeeded}
+              {volunteersEnrolled} of {volunteersNeeded}
             </span>
           </div>
           <div className="w-full bg-gray-200 rounded-full h-2">
             <div
               className="bg-secondary h-2 rounded-full transition-all"
-              style={{ width: `${(project.volunteersEnrolled / project.volunteersNeeded) * 100}%` }}
+              style={{ width: `${volunteersNeeded ? (volunteersEnrolled / volunteersNeeded) * 100 : 0}%` }}
             />
           </div>
         </div>

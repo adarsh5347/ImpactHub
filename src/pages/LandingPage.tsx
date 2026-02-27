@@ -1,15 +1,38 @@
+import { useEffect, useState } from 'react';
 import { ArrowRight, CheckCircle, Heart, Users, TrendingUp, Target, Shield, Award, Sparkles, HandHeart, Globe, Building2, UserPlus } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
-import { mockProjects } from '../lib/mock-data';
 import { ProjectCard } from '../components/ProjectCard';
+import { projectService } from '../lib/api/project.service';
+import type { Project } from '../lib/api/types';
+import { getErrorMessage } from '../lib/api';
 
 interface LandingPageProps {
   onNavigate: (page: string, params?: any) => void;
 }
 
 export function LandingPage({ onNavigate }: LandingPageProps) {
-  const featuredProjects = mockProjects.slice(0, 3);
+  const [featuredProjects, setFeaturedProjects] = useState<Project[]>([]);
+  const [projectsError, setProjectsError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+
+    projectService
+      .getProjects()
+      .then((projects) => {
+        if (!active) return;
+        setFeaturedProjects(projects.slice(0, 3));
+      })
+      .catch((error) => {
+        if (!active) return;
+        setProjectsError(getErrorMessage(error));
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   return (
     <div>
@@ -208,15 +231,21 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
-            {featuredProjects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                onViewDetails={(id) => onNavigate('project', { projectId: id })}
-              />
-            ))}
-          </div>
+          {projectsError ? (
+            <Card className="p-6 text-center mb-8">
+              <p className="text-sm text-red-700">Failed to load featured projects: {projectsError}</p>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
+              {featuredProjects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  onViewDetails={(id) => onNavigate('project', { projectId: String(id) })}
+                />
+              ))}
+            </div>
+          )}
 
           <div className="text-center">
             <Button
@@ -228,70 +257,6 @@ export function LandingPage({ onNavigate }: LandingPageProps) {
               View All Projects
               <ArrowRight className="ml-2 w-5 h-5" />
             </Button>
-          </div>
-        </div>
-      </section>
-
-      {/* Impact Stories - Real Numbers */}
-      <section className="py-16 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              Real Stories, Real Impact
-            </h2>
-            <p className="text-lg text-gray-600">
-              See how contributions transform lives across India
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Card className="hover:shadow-xl transition-all group">
-              <CardContent className="p-6">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Target className="w-6 h-6 text-primary" />
-                </div>
-                <div className="text-4xl font-bold text-primary mb-2">5,000</div>
-                <h4 className="font-semibold text-gray-900 mb-2">Students Educated</h4>
-                <p className="text-sm text-gray-600">
-                  Digital literacy program brought computers to 50 rural schools in Maharashtra
-                </p>
-                <div className="mt-4 pt-4 border-t">
-                  <div className="text-xs text-gray-500">Education for All Foundation</div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-xl transition-all group">
-              <CardContent className="p-6">
-                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Heart className="w-6 h-6 text-secondary" />
-                </div>
-                <div className="text-4xl font-bold text-secondary mb-2">25,000</div>
-                <h4 className="font-semibold text-gray-900 mb-2">Health Checkups</h4>
-                <p className="text-sm text-gray-600">
-                  Mobile clinics provided free healthcare to remote villages across Delhi NCR
-                </p>
-                <div className="mt-4 pt-4 border-t">
-                  <div className="text-xs text-gray-500">Health First Community</div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="hover:shadow-xl transition-all group">
-              <CardContent className="p-6">
-                <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
-                  <Globe className="w-6 h-6 text-accent" />
-                </div>
-                <div className="text-4xl font-bold text-accent mb-2">100K</div>
-                <h4 className="font-semibold text-gray-900 mb-2">Trees Planted</h4>
-                <p className="text-sm text-gray-600">
-                  Urban forest restoration improved air quality for 500K residents in Bangalore
-                </p>
-                <div className="mt-4 pt-4 border-t">
-                  <div className="text-xs text-gray-500">Green Earth Initiative</div>
-                </div>
-              </CardContent>
-            </Card>
           </div>
         </div>
       </section>

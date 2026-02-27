@@ -4,6 +4,33 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { authService } from '../lib/api/auth.service';
+import { ngoService } from '../lib/api/ngo.service';
+import { getErrorMessage } from '../lib/api/client';
+import type { RegisterNGORequest } from '../lib/api/types';
+
+const MAX_LOGO_SIZE_BYTES = 5 * 1024 * 1024;
+const MAX_COVER_SIZE_BYTES = 10 * 1024 * 1024;
+
+function validateLogoFile(file: File): string | null {
+  if (!file.type.startsWith('image/')) {
+    return 'Please select a valid image file.';
+  }
+  if (file.size > MAX_LOGO_SIZE_BYTES) {
+    return 'Logo image must be 5MB or smaller.';
+  }
+  return null;
+}
+
+function validateCoverFile(file: File): string | null {
+  if (!file.type.startsWith('image/')) {
+    return 'Please select a valid image file.';
+  }
+  if (file.size > MAX_COVER_SIZE_BYTES) {
+    return 'Cover image must be 10MB or smaller.';
+  }
+  return null;
+}
 
 interface NGORegistrationPageProps {
   onNavigate: (page: string, params?: any) => void;
@@ -50,7 +77,6 @@ export function NGORegistrationPage({ onNavigate }: NGORegistrationPageProps) {
     section80G: '',
     
     // Operations
-    annualBudget: '',
     teamSize: '',
     volunteersCount: '',
     beneficiariesReached: '',
@@ -61,6 +87,16 @@ export function NGORegistrationPage({ onNavigate }: NGORegistrationPageProps) {
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [logoPreviewUrl, setLogoPreviewUrl] = useState<string>('');
+  const [uploadedLogo, setUploadedLogo] = useState<{ logoUrl: string; publicId?: string } | null>(null);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [coverPreviewUrl, setCoverPreviewUrl] = useState<string>('');
+  const [uploadedCover, setUploadedCover] = useState<{ coverImageUrl: string; publicId?: string } | null>(null);
+  const [isUploadingLogo, setIsUploadingLogo] = useState(false);
+  const [isUploadingCover, setIsUploadingCover] = useState(false);
 
   const causes = ['Education', 'Healthcare', 'Environment', 'Women Empowerment', 'Child Welfare', 'Rural Development', 'Animal Welfare', 'Disaster Relief'];
   const activityOptions = ['Awareness Campaigns', 'Direct Services', 'Research & Advocacy', 'Skill Training', 'Community Development', 'Emergency Relief', 'Counseling', 'Infrastructure Building'];
@@ -80,21 +116,143 @@ export function NGORegistrationPage({ onNavigate }: NGORegistrationPageProps) {
     });
   };
 
-  const handleSubmit = () => {
-    // Save to localStorage
-    const ngos = JSON.parse(localStorage.getItem('ngos') || '[]');
-    const newNGO = {
-      id: Date.now().toString(),
-      ...formData,
-      registeredDate: new Date().toISOString(),
-      status: 'pending-verification',
-      verified: false,
+  const toBoolean = (value: string): boolean | undefined => {
+    if (value === 'yes') return true;
+    if (value === 'no') return false;
+    return undefined;
+  };
+
+  const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    if (!file) return;
+
+    const validationError = validateLogoFile(file);
+    if (validationError) {
+      setSubmitError(validationError);
+      event.currentTarget.value = '';
+      return;
+    }
+
+    setSubmitError('');
+    setUploadedLogo(null);
+    if (logoPreviewUrl) {
+      URL.revokeObjectURL(logoPreviewUrl);
+    }
+    const previewUrl = URL.createObjectURL(file);
+    setLogoPreviewUrl(previewUrl);
+    setLogoFile(file);
+  };
+
+  const clearLogoSelection = () => {
+    if (logoPreviewUrl) {
+      URL.revokeObjectURL(logoPreviewUrl);
+    }
+    setLogoPreviewUrl('');
+    setLogoFile(null);
+    setUploadedLogo(null);
+  };
+
+  const handleCoverChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0] || null;
+    if (!file) return;
+
+    const validationError = validateCoverFile(file);
+    if (validationError) {
+      setSubmitError(validationError);
+      event.currentTarget.value = '';
+      return;
+    }
+
+    setSubmitError('');
+    setUploadedCover(null);
+    if (coverPreviewUrl) {
+      URL.revokeObjectURL(coverPreviewUrl);
+    }
+    const previewUrl = URL.createObjectURL(file);
+    setCoverPreviewUrl(previewUrl);
+    setCoverFile(file);
+  };
+
+  const clearCoverSelection = () => {
+    if (coverPreviewUrl) {
+      URL.revokeObjectURL(coverPreviewUrl);
+    }
+    setCoverPreviewUrl('');
+    setCoverFile(null);
+    setUploadedCover(null);
+  };
+
+  const handleSubmit = async () => {
+    setSubmitError('');
+
+    if (!formData.ngoName || !formData.registrationNumber || !formData.email || !formData.password) {
+      setSubmitError('Please fill all required fields before submitting.');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setSubmitError('Password and confirm password must match.');
+      return;
+    }
+
+    const payload: RegisterNGORequest = {
+      ngoName: formData.ngoName,
+      registrationNumber: formData.registrationNumber,
+      email: formData.email,
+      password: formData.password,
+      yearFounded: formData.foundedYear ? Number(formData.foundedYear) : undefined,
+      causeFocus: formData.cause ? [formData.cause] : undefined,
+      mission: formData.mission || undefined,
+      vision: formData.vision || undefined,
+      websiteUrl: formData.website || undefined,
+      phone: formData.phone || undefined,
+      ngoEmail: formData.email || undefined,
+      address: formData.address || undefined,
+      city: formData.city || undefined,
+      state: formData.state || undefined,
+      pincode: formData.pincode || undefined,
+      panNumber: formData.panNumber || undefined,
+      gstNumber: formData.gstNumber || undefined,
+      is80gRegistered: toBoolean(formData.section80G),
+      fcraRegistered: toBoolean(formData.fcraRegistered),
+      primaryContactName: formData.contactPerson || undefined,
+      primaryContactEmail: formData.contactPersonEmail || undefined,
+      primaryContactPhone: formData.contactPersonPhone || undefined,
+      logoUrl: uploadedLogo?.logoUrl,
+      logoPublicId: uploadedLogo?.publicId,
+      coverImageUrl: uploadedCover?.coverImageUrl,
+      coverImagePublicId: uploadedCover?.publicId,
     };
-    ngos.push(newNGO);
-    localStorage.setItem('ngos', JSON.stringify(ngos));
-    localStorage.setItem('currentNGO', JSON.stringify(newNGO));
-    
-    setSubmitted(true);
+
+    try {
+      setIsSubmitting(true);
+      if (coverFile && !uploadedCover) {
+        setIsUploadingCover(true);
+        const uploaded = await ngoService.uploadNgoCover(coverFile);
+        payload.coverImageUrl = uploaded.coverImageUrl;
+        payload.coverImagePublicId = uploaded.publicId;
+        setUploadedCover(uploaded);
+      }
+      if (logoFile && !uploadedLogo) {
+        setIsUploadingLogo(true);
+        const uploaded = await ngoService.uploadNgoLogo(logoFile);
+        payload.logoUrl = uploaded.logoUrl;
+        payload.logoPublicId = uploaded.publicId;
+        setUploadedLogo(uploaded);
+      }
+      await authService.registerNGO(payload);
+      localStorage.removeItem('token');
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('currentNGO');
+      
+      setSubmitted(true);
+    } catch (error) {
+      setSubmitError(getErrorMessage(error));
+    } finally {
+      setIsUploadingLogo(false);
+      setIsUploadingCover(false);
+      setIsSubmitting(false);
+    }
   };
 
   const nextStep = () => {
@@ -103,6 +261,15 @@ export function NGORegistrationPage({ onNavigate }: NGORegistrationPageProps) {
 
   const prevStep = () => {
     if (step > 1) setStep(step - 1);
+  };
+
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (step < 5) {
+      nextStep();
+      return;
+    }
+    void handleSubmit();
   };
 
   if (submitted) {
@@ -118,20 +285,20 @@ export function NGORegistrationPage({ onNavigate }: NGORegistrationPageProps) {
                 Welcome to ImpactHub, {formData.ngoName}!
               </h2>
               <p className="text-base sm:text-lg text-gray-600 mb-3 sm:mb-4">
-                Your NGO registration has been submitted successfully. Our team will verify your details and activate your profile within 48 hours.
+                Your NGO registration has been submitted successfully. Your account will be activated only after admin approval.
               </p>
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 sm:mb-8">
                 <p className="text-sm text-blue-800">
-                  <strong>Next Steps:</strong> You will receive a confirmation email at {formData.email} once your account is verified.
+                  <strong>Next Steps:</strong> You will receive an approval email at {formData.email} only after the admin approves your NGO.
                 </p>
               </div>
               <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
                 <Button
                   size="lg"
                   className="bg-primary hover:bg-primary/90"
-                  onClick={() => onNavigate('ngo-admin')}
+                  onClick={() => onNavigate('login')}
                 >
-                  Go to Admin Panel
+                  Go to Login
                 </Button>
                 <Button
                   size="lg"
@@ -204,6 +371,7 @@ export function NGORegistrationPage({ onNavigate }: NGORegistrationPageProps) {
         {/* Form */}
         <Card className="shadow-lg">
           <CardContent className="p-4 sm:p-6 md:p-8">
+            <form onSubmit={handleFormSubmit}>
             {/* Step 1: Basic Information */}
             {step === 1 && (
               <div className="space-y-6">
@@ -271,6 +439,62 @@ export function NGORegistrationPage({ onNavigate }: NGORegistrationPageProps) {
                     placeholder="https://www.example.org"
                     className="bg-white"
                   />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    NGO Logo (Optional)
+                  </label>
+                  <div className="space-y-3">
+                    <Input type="file" accept="image/*" onChange={handleLogoChange} className="bg-white" />
+                    {(logoPreviewUrl || uploadedLogo?.logoUrl) && (
+                      <div className="flex items-center gap-3">
+                        <img
+                          src={uploadedLogo?.logoUrl || logoPreviewUrl}
+                          alt="NGO logo preview"
+                          className="w-16 h-16 rounded-lg object-cover border border-gray-200"
+                        />
+                        <Button type="button" variant="outline" onClick={clearLogoSelection}>
+                          Remove Logo
+                        </Button>
+                      </div>
+                    )}
+                    {isUploadingLogo && (
+                      <p className="text-sm text-gray-600 flex items-center gap-2">
+                        <Upload className="w-4 h-4 animate-spin" />
+                        Uploading logo...
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500">Supported formats: JPG, PNG, WEBP. Max size: 5MB.</p>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Cover Image (Optional)
+                  </label>
+                  <div className="space-y-3">
+                    <Input type="file" accept="image/*" onChange={handleCoverChange} className="bg-white" />
+                    {(coverPreviewUrl || uploadedCover?.coverImageUrl) && (
+                      <div className="space-y-3">
+                        <img
+                          src={uploadedCover?.coverImageUrl || coverPreviewUrl}
+                          alt="NGO cover preview"
+                          className="w-full h-32 rounded-lg object-cover border border-gray-200"
+                        />
+                        <Button type="button" variant="outline" onClick={clearCoverSelection}>
+                          Remove Cover
+                        </Button>
+                      </div>
+                    )}
+                    {isUploadingCover && (
+                      <p className="text-sm text-gray-600 flex items-center gap-2">
+                        <Upload className="w-4 h-4 animate-spin" />
+                        Uploading cover...
+                      </p>
+                    )}
+                    <p className="text-xs text-gray-500">Supported formats: JPG, PNG, WEBP. Max size: 10MB.</p>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -476,7 +700,7 @@ export function NGORegistrationPage({ onNavigate }: NGORegistrationPageProps) {
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Primary Cause *
                   </label>
-                  <Select value={formData.cause} onValueChange={(value) => handleInputChange('cause', value)}>
+                  <Select value={formData.cause} onValueChange={(value: string) => handleInputChange('cause', value)}>
                     <SelectTrigger className="bg-white">
                       <SelectValue placeholder="Select primary cause" />
                     </SelectTrigger>
@@ -605,7 +829,7 @@ export function NGORegistrationPage({ onNavigate }: NGORegistrationPageProps) {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       FCRA Registered? *
                     </label>
-                    <Select value={formData.fcraRegistered} onValueChange={(value) => handleInputChange('fcraRegistered', value)}>
+                    <Select value={formData.fcraRegistered} onValueChange={(value: string) => handleInputChange('fcraRegistered', value)}>
                       <SelectTrigger className="bg-white">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
@@ -621,7 +845,7 @@ export function NGORegistrationPage({ onNavigate }: NGORegistrationPageProps) {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       80G Certification? *
                     </label>
-                    <Select value={formData.section80G} onValueChange={(value) => handleInputChange('section80G', value)}>
+                    <Select value={formData.section80G} onValueChange={(value: string) => handleInputChange('section80G', value)}>
                       <SelectTrigger className="bg-white">
                         <SelectValue placeholder="Select status" />
                       </SelectTrigger>
@@ -634,11 +858,6 @@ export function NGORegistrationPage({ onNavigate }: NGORegistrationPageProps) {
                   </div>
                 </div>
 
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                  <p className="text-sm text-blue-800">
-                    <strong>Note:</strong> You will need to upload supporting documents (Registration Certificate, PAN Card, etc.) after account approval.
-                  </p>
-                </div>
               </div>
             )}
 
@@ -648,24 +867,6 @@ export function NGORegistrationPage({ onNavigate }: NGORegistrationPageProps) {
                 <h3 className="text-xl font-semibold text-gray-900 mb-4">Operations & Impact</h3>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Annual Budget Range *
-                    </label>
-                    <Select value={formData.annualBudget} onValueChange={(value) => handleInputChange('annualBudget', value)}>
-                      <SelectTrigger className="bg-white">
-                        <SelectValue placeholder="Select range" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="under-5L">Under ₹5 Lakh</SelectItem>
-                        <SelectItem value="5L-20L">₹5 - 20 Lakh</SelectItem>
-                        <SelectItem value="20L-50L">₹20 - 50 Lakh</SelectItem>
-                        <SelectItem value="50L-1Cr">₹50 Lakh - 1 Crore</SelectItem>
-                        <SelectItem value="above-1Cr">Above ₹1 Crore</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Team Size *
@@ -738,9 +939,16 @@ export function NGORegistrationPage({ onNavigate }: NGORegistrationPageProps) {
             )}
 
             {/* Navigation Buttons */}
+            {submitError && (
+              <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-sm text-red-800">{submitError}</p>
+              </div>
+            )}
+
             <div className="flex justify-between mt-8 pt-6 border-t">
               {step > 1 && (
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={prevStep}
                 >
@@ -749,20 +957,28 @@ export function NGORegistrationPage({ onNavigate }: NGORegistrationPageProps) {
               )}
               {step < 5 ? (
                 <Button
+                  type="submit"
                   className="ml-auto bg-primary hover:bg-primary/90"
-                  onClick={nextStep}
                 >
                   Next
                 </Button>
               ) : (
                 <Button
+                  type="submit"
                   className="ml-auto bg-primary hover:bg-primary/90"
-                  onClick={handleSubmit}
+                  disabled={isSubmitting || isUploadingLogo || isUploadingCover}
                 >
-                  Submit for Verification
+                  {isSubmitting
+                    ? 'Submitting...'
+                    : isUploadingCover
+                    ? 'Uploading Cover...'
+                    : isUploadingLogo
+                    ? 'Uploading Logo...'
+                    : 'Submit for Verification'}
                 </Button>
               )}
             </div>
+            </form>
           </CardContent>
         </Card>
       </div>

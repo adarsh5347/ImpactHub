@@ -7,5 +7,11 @@
 
   Run `npm i` to install the dependencies.
 
+  Copy `.env.example` to `.env.local` and set:
+
+  - `VITE_API_BASE_URL=http://localhost:8080/api`
+
   Run `npm run dev` to start the development server.
+
+  Run `npm run build` to create production build.
   

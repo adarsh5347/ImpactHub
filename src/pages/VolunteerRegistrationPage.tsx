@@ -4,6 +4,9 @@ import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
+import { authService } from '../lib/api/auth.service';
+import { getErrorMessage } from '../lib/api/client';
+import type { RegisterVolunteerRequest, VolunteerGender } from '../lib/api/types';
 
 interface VolunteerRegistrationPageProps {
   onNavigate: (page: string, params?: any) => void;
@@ -47,6 +50,8 @@ export function VolunteerRegistrationPage({ onNavigate }: VolunteerRegistrationP
   });
 
   const [submitted, setSubmitted] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const causes = ['Education', 'Healthcare', 'Environment', 'Women Empowerment', 'Child Welfare', 'Rural Development', 'Animal Welfare', 'Disaster Relief'];
   const skillOptions = ['Teaching', 'Medical/Healthcare', 'Technology/IT', 'Marketing', 'Finance', 'Legal', 'Construction', 'Agriculture', 'Social Work', 'Event Management'];
@@ -66,20 +71,60 @@ export function VolunteerRegistrationPage({ onNavigate }: VolunteerRegistrationP
     });
   };
 
-  const handleSubmit = () => {
-    // Save to localStorage
-    const volunteers = JSON.parse(localStorage.getItem('volunteers') || '[]');
-    const newVolunteer = {
-      id: Date.now().toString(),
-      ...formData,
-      registeredDate: new Date().toISOString(),
-      status: 'active',
+  const mapGender = (value: string): VolunteerGender | undefined => {
+    if (value === 'male') return 'Male';
+    if (value === 'female') return 'Female';
+    if (value === 'other') return 'Other';
+    if (value === 'prefer-not-to-say') return 'PreferNotToSay';
+    return undefined;
+  };
+
+  const handleSubmit = async () => {
+    setSubmitError('');
+
+    if (!formData.fullName || !formData.email || !formData.password) {
+      setSubmitError('Please fill all required fields before submitting.');
+      return;
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setSubmitError('Password and confirm password must match.');
+      return;
+    }
+
+    const payload: RegisterVolunteerRequest = {
+      fullName: formData.fullName,
+      email: formData.email,
+      password: formData.password,
+      phone: formData.phone || undefined,
+      dateOfBirth: formData.dateOfBirth || undefined,
+      gender: mapGender(formData.gender),
+      address: formData.address || undefined,
+      city: formData.city || undefined,
+      state: formData.state || undefined,
+      pincode: formData.pincode || undefined,
+      skills: formData.skills.length ? formData.skills : undefined,
+      interests: formData.interests.length ? formData.interests : undefined,
+      availability: [formData.availability, formData.hoursPerWeek].filter(Boolean).join(' | ') || undefined,
+      preferredCauses: formData.interests.length ? formData.interests : undefined,
+      education: formData.education || undefined,
+      occupation: formData.occupation || undefined,
     };
-    volunteers.push(newVolunteer);
-    localStorage.setItem('volunteers', JSON.stringify(volunteers));
-    localStorage.setItem('currentVolunteer', JSON.stringify(newVolunteer));
-    
-    setSubmitted(true);
+
+    try {
+      setIsSubmitting(true);
+      const response = await authService.registerVolunteer(payload);
+      if (response.token) {
+        localStorage.setItem('token', response.token);
+        localStorage.setItem('authToken', response.token);
+      }
+      localStorage.setItem('currentVolunteer', JSON.stringify({ email: formData.email }));
+      setSubmitted(true);
+    } catch (error) {
+      setSubmitError(getErrorMessage(error));
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const nextStep = () => {
@@ -88,6 +133,15 @@ export function VolunteerRegistrationPage({ onNavigate }: VolunteerRegistrationP
 
   const prevStep = () => {
     if (step > 1) setStep(step - 1);
+  };
+
+  const handleFormSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (step < 4) {
+      nextStep();
+      return;
+    }
+    void handleSubmit();
   };
 
   if (submitted) {
@@ -183,6 +237,7 @@ export function VolunteerRegistrationPage({ onNavigate }: VolunteerRegistrationP
         {/* Form */}
         <Card className="shadow-lg">
           <CardContent className="p-4 sm:p-6 md:p-8">
+            <form onSubmit={handleFormSubmit}>
             {/* Step 1: Personal Information */}
             {step === 1 && (
               <div className="space-y-6">
@@ -255,7 +310,7 @@ export function VolunteerRegistrationPage({ onNavigate }: VolunteerRegistrationP
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Gender *
                     </label>
-                    <Select value={formData.gender} onValueChange={(value) => handleInputChange('gender', value)}>
+                    <Select value={formData.gender} onValueChange={(value: string) => handleInputChange('gender', value)}>
                       <SelectTrigger className="bg-white">
                         <SelectValue placeholder="Select gender" />
                       </SelectTrigger>
@@ -424,7 +479,7 @@ export function VolunteerRegistrationPage({ onNavigate }: VolunteerRegistrationP
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Education *
                   </label>
-                  <Select value={formData.education} onValueChange={(value) => handleInputChange('education', value)}>
+                  <Select value={formData.education} onValueChange={(value: string) => handleInputChange('education', value)}>
                     <SelectTrigger className="bg-white">
                       <SelectValue placeholder="Select highest education" />
                     </SelectTrigger>
@@ -506,7 +561,7 @@ export function VolunteerRegistrationPage({ onNavigate }: VolunteerRegistrationP
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Availability *
                     </label>
-                    <Select value={formData.availability} onValueChange={(value) => handleInputChange('availability', value)}>
+                    <Select value={formData.availability} onValueChange={(value: string) => handleInputChange('availability', value)}>
                       <SelectTrigger className="bg-white">
                         <SelectValue placeholder="Select availability" />
                       </SelectTrigger>
@@ -522,7 +577,7 @@ export function VolunteerRegistrationPage({ onNavigate }: VolunteerRegistrationP
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Hours Per Week *
                     </label>
-                    <Select value={formData.hoursPerWeek} onValueChange={(value) => handleInputChange('hoursPerWeek', value)}>
+                    <Select value={formData.hoursPerWeek} onValueChange={(value: string) => handleInputChange('hoursPerWeek', value)}>
                       <SelectTrigger className="bg-white">
                         <SelectValue placeholder="Select hours" />
                       </SelectTrigger>
@@ -564,9 +619,16 @@ export function VolunteerRegistrationPage({ onNavigate }: VolunteerRegistrationP
             )}
 
             {/* Navigation Buttons */}
+            {submitError && (
+              <div className="mt-6 bg-red-50 border border-red-200 rounded-lg p-3">
+                <p className="text-sm text-red-800">{submitError}</p>
+              </div>
+            )}
+
             <div className="flex justify-between mt-8 pt-6 border-t">
               {step > 1 && (
                 <Button
+                  type="button"
                   variant="outline"
                   onClick={prevStep}
                 >
@@ -575,20 +637,22 @@ export function VolunteerRegistrationPage({ onNavigate }: VolunteerRegistrationP
               )}
               {step < 4 ? (
                 <Button
+                  type="submit"
                   className="ml-auto bg-secondary hover:bg-secondary/90"
-                  onClick={nextStep}
                 >
                   Next
                 </Button>
               ) : (
                 <Button
+                  type="submit"
                   className="ml-auto bg-secondary hover:bg-secondary/90"
-                  onClick={handleSubmit}
+                  disabled={isSubmitting}
                 >
-                  Complete Registration
+                  {isSubmitting ? 'Submitting...' : 'Complete Registration'}
                 </Button>
               )}
             </div>
+            </form>
           </CardContent>
         </Card>
       </div>

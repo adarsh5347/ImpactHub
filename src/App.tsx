@@ -6,81 +6,136 @@ import { LandingPage } from './pages/LandingPage';
 import { NGODirectoryPage } from './pages/NGODirectoryPage';
 import { NGOProfilePage } from './pages/NGOProfilePage';
 import { ProjectDetailsPage } from './pages/ProjectDetailsPage';
-import { DonorDashboard } from './pages/DonorDashboard';
 import { VolunteerDashboard } from './pages/VolunteerDashboard';
 import { NGOAdminPanel } from './pages/NGOAdminPanel';
+import { NGOProjectEditPage } from './pages/NGOProjectEditPage';
 import { VolunteerRegistrationPage } from './pages/VolunteerRegistrationPage';
 import { NGORegistrationPage } from './pages/NGORegistrationPage';
 import { LoginPage } from './pages/LoginPage';
 import { AboutPage } from './pages/AboutPage';
 import { HowItWorksPage } from './pages/HowItWorksPage';
 import { CompliancePage } from './pages/CompliancePage';
+import { AdminDashboardPage } from './pages/AdminDashboardPage';
+import { AdminNGOApprovalsPage } from './pages/AdminNGOApprovalsPage';
+import { AdminVolunteersPage } from './pages/AdminVolunteersPage';
+import { authService } from './lib/api/auth.service';
+import { useAuth } from './context/AuthContext';
+import { Toaster } from './components/ui/sonner';
 
-type Page = 'landing' | 'directory' | 'ngo-profile' | 'project' | 'donor-dashboard' | 'volunteer-dashboard' | 'ngo-admin' | 'volunteer-registration' | 'ngo-registration' | 'login' | 'about' | 'how-it-works' | 'compliance';
-type UserRole = 'donor' | 'volunteer' | 'ngo' | null;
+type Page = 'landing' | 'directory' | 'ngo-profile' | 'project' | 'volunteer-dashboard' | 'ngo-admin' | 'ngo-project-edit' | 'admin' | 'admin-ngos' | 'admin-volunteers' | 'volunteer-registration' | 'ngo-registration' | 'login' | 'about' | 'how-it-works' | 'compliance';
+
+console.log(import.meta.env.VITE_API_URL);
 
 interface PageParams {
   ngoId?: string;
   projectId?: string;
+  loginType?: 'volunteer' | 'ngo';
 }
 
 export default function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [currentPage, setCurrentPage] = useState<Page>('landing');
   const [pageParams, setPageParams] = useState<PageParams>({});
-  const [userRole, setUserRole] = useState<UserRole>(null);
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [loginInfoMessage, setLoginInfoMessage] = useState('');
+  const { role: userRole, user: currentUser, isInitializing, applyLoginResponse, logout } = useAuth();
 
-  // Check for existing session on mount
-  useEffect(() => {
-    const volunteer = localStorage.getItem('currentVolunteer');
-    const ngo = localStorage.getItem('currentNGO');
-    
-    if (volunteer) {
-      setUserRole('volunteer');
-      setCurrentUser(JSON.parse(volunteer));
-    } else if (ngo) {
-      setUserRole('ngo');
-      setCurrentUser(JSON.parse(ngo));
-    }
-  }, []);
-
-  const handleLogin = (userType: 'volunteer' | 'ngo', userData: any) => {
-    setUserRole(userType);
-    setCurrentUser(userData);
+  const handleLogin = async (response: any) => {
+    await applyLoginResponse(response);
+    setLoginInfoMessage('');
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('currentVolunteer');
-    localStorage.removeItem('currentNGO');
-    setUserRole(null);
-    setCurrentUser(null);
+    logout();
+    setLoginInfoMessage('');
     setCurrentPage('landing');
   };
 
+  const hasSessionRole = (expected: 'volunteer' | 'ngo' | 'admin') => {
+    if (userRole === expected) return true;
+
+    const token = localStorage.getItem('token') || localStorage.getItem('authToken');
+    if (!token) return false;
+
+    if (expected === 'admin') {
+      return authService.isAdminToken(token) || !!localStorage.getItem('currentAdmin');
+    }
+
+    if (expected === 'volunteer') {
+      return !!localStorage.getItem('currentVolunteer');
+    }
+
+    return !!localStorage.getItem('currentNGO');
+  };
+
+  const isAdminRestrictedPage = (page: string) => {
+    return page === 'admin' || page === 'admin-ngos' || page === 'admin-volunteers';
+  };
+
+  useEffect(() => {
+    if (isInitializing) return;
+    if (hasSessionRole('admin') && !isAdminRestrictedPage(currentPage)) {
+      setCurrentPage('admin');
+      setPageParams({});
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentPage, isInitializing, userRole]);
+
+  useEffect(() => {
+    const handlePopState = () => {
+      if (hasSessionRole('admin')) {
+        window.location.reload();
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, [userRole]);
+
   const handleNavigate = (page: string, params?: PageParams) => {
+    if (page !== 'login') {
+      setLoginInfoMessage('');
+    }
+
+    if (hasSessionRole('admin') && !isAdminRestrictedPage(page)) {
+      setCurrentPage('admin');
+      setPageParams({});
+      window.location.reload();
+      return;
+    }
+
     // Protect volunteer dashboard
     if (page === 'volunteer-dashboard') {
-      const volunteer = localStorage.getItem('currentVolunteer');
-      if (!volunteer) {
+      if (!hasSessionRole('volunteer')) {
+        setLoginInfoMessage('Please sign in as a volunteer to continue.');
         setCurrentPage('login');
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
-      setUserRole('volunteer');
-      setCurrentUser(JSON.parse(volunteer));
     }
 
     // Protect NGO admin panel
-    if (page === 'ngo-admin') {
-      const ngo = localStorage.getItem('currentNGO');
-      if (!ngo) {
+    if (page === 'ngo-admin' || page === 'ngo-project-edit') {
+      if (!hasSessionRole('ngo')) {
+        setLoginInfoMessage('Please sign in as an NGO user to continue.');
         setCurrentPage('login');
         window.scrollTo({ top: 0, behavior: 'smooth' });
         return;
       }
-      setUserRole('ngo');
-      setCurrentUser(JSON.parse(ngo));
+    }
+
+    if ((page === 'project' || page === 'ngo-profile') && hasSessionRole('ngo')) {
+      setCurrentPage('ngo-admin');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      return;
+    }
+
+    if (page === 'admin' || page === 'admin-ngos' || page === 'admin-volunteers') {
+      if (!hasSessionRole('admin')) {
+        setLoginInfoMessage('Admin access is required for this page. Please sign in with an admin account.');
+        setCurrentPage('login');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+        return;
+      }
     }
 
     // Reset user role when going to landing
@@ -111,18 +166,40 @@ export default function App() {
         ) : (
           <NGODirectoryPage onNavigate={handleNavigate} />
         );
-      case 'donor-dashboard':
-        return <DonorDashboard onNavigate={handleNavigate} />;
       case 'volunteer-dashboard':
         return <VolunteerDashboard onNavigate={handleNavigate} />;
       case 'ngo-admin':
         return <NGOAdminPanel onNavigate={handleNavigate} />;
+      case 'ngo-project-edit':
+        return pageParams.projectId ? (
+          <NGOProjectEditPage projectId={pageParams.projectId} onNavigate={handleNavigate} />
+        ) : (
+          <NGOAdminPanel onNavigate={handleNavigate} />
+        );
+      case 'admin':
+        return <AdminDashboardPage onNavigate={handleNavigate} />;
+      case 'admin-ngos':
+        return (
+          <AdminNGOApprovalsPage
+            onNavigate={handleNavigate}
+            initialStatus={(pageParams as { status?: 'PENDING' | 'APPROVED' | 'REJECTED' | 'SUSPENDED' }).status}
+          />
+        );
+      case 'admin-volunteers':
+        return <AdminVolunteersPage onNavigate={handleNavigate} />;
       case 'volunteer-registration':
         return <VolunteerRegistrationPage onNavigate={handleNavigate} />;
       case 'ngo-registration':
         return <NGORegistrationPage onNavigate={handleNavigate} />;
       case 'login':
-        return <LoginPage onNavigate={handleNavigate} onLogin={handleLogin} />;
+        return (
+          <LoginPage
+            onNavigate={handleNavigate}
+            onLogin={handleLogin}
+            infoMessage={loginInfoMessage}
+            initialUserType={(pageParams as { loginType?: 'volunteer' | 'ngo' }).loginType}
+          />
+        );
       case 'about':
         return <AboutPage />;
       case 'how-it-works':
@@ -137,19 +214,20 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col bg-gray-50">
       {showSplash && <SplashScreen onComplete={() => setShowSplash(false)} />}
-      {!showSplash && (
+      {!showSplash && !isInitializing && (
         <>
           <Navigation 
             currentPage={currentPage} 
             onNavigate={handleNavigate} 
-            userRole={userRole}
-            currentUser={currentUser}
+            userRole={userRole as any}
+            currentUser={currentUser as any}
             onLogout={handleLogout}
           />
           <main className="flex-1">
             {renderPage()}
           </main>
           <Footer onNavigate={handleNavigate} />
+          <Toaster />
         </>
       )}
     </div>

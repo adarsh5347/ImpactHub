@@ -1,24 +1,35 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ArrowLeft, Mail, Lock, Users, Building2, Eye, EyeOff } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Card, CardContent } from '../components/ui/card';
+import { authService } from '../lib/api/auth.service';
+import { ngoService } from '../lib/api/ngo.service';
+import { getErrorMessage } from '../lib/api/client';
 
 interface LoginPageProps {
   onNavigate: (page: string, params?: any) => void;
-  onLogin: (userType: 'volunteer' | 'ngo', userData: any) => void;
+  onLogin: (response: any) => Promise<void>;
+  infoMessage?: string;
+  initialUserType?: 'volunteer' | 'ngo';
 }
 
-export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
-  const [userType, setUserType] = useState<'volunteer' | 'ngo'>('volunteer');
+export function LoginPage({ onNavigate, onLogin, infoMessage, initialUserType = 'volunteer' }: LoginPageProps) {
+  const [userType, setUserType] = useState<'volunteer' | 'ngo'>(initialUserType);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleLogin = () => {
+  useEffect(() => {
+    setUserType(initialUserType);
+  }, [initialUserType]);
+
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
     setError('');
-    
+
     if (!email) {
       setError('Please enter your email address');
       return;
@@ -29,40 +40,61 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
       return;
     }
 
-    if (userType === 'volunteer') {
-      const volunteers = JSON.parse(localStorage.getItem('volunteers') || '[]');
-      const volunteer = volunteers.find((v: any) => v.email === email);
-      
-      if (!volunteer) {
-        setError('No volunteer account found. Please register first.');
+    try {
+      setIsSubmitting(true);
+      const response = await authService.login(email, password);
+
+      if (!response.userType) {
+        setError(response.message || 'Invalid credentials');
         return;
       }
 
-      if (volunteer.password !== password) {
-        setError('Incorrect password. Please try again.');
+      if (response.userType === 'VOLUNTEER') {
+        await onLogin(response);
+        onNavigate('volunteer-dashboard');
         return;
       }
 
-      localStorage.setItem('currentVolunteer', JSON.stringify(volunteer));
-      onLogin('volunteer', volunteer);
-      onNavigate('volunteer-dashboard');
-    } else {
-      const ngos = JSON.parse(localStorage.getItem('ngos') || '[]');
-      const ngo = ngos.find((n: any) => n.email === email);
-      
-      if (!ngo) {
-        setError('No NGO account found. Please register first.');
+      if (response.userType === 'NGO') {
+        const ngos = await ngoService.getNGOs();
+        const ngo = ngos.find((entry) => entry.email === response.email || entry.userEmail === response.email);
+
+        if (!ngo) {
+          authService.logout();
+          setError('NGO profile not found. Please contact support.');
+          return;
+        }
+
+        const status = String(ngo.status ?? '').toUpperCase();
+        const isApproved = ngo.isVerified === true || status === 'APPROVED';
+
+        if (!isApproved) {
+          authService.logout();
+          setError(
+            status === 'REJECTED'
+              ? 'Your NGO registration was rejected. Please contact admin for details.'
+              : 'Your NGO account is pending admin approval. Access is enabled only after approval.'
+          );
+          return;
+        }
+
+        localStorage.setItem('currentNGO', JSON.stringify(ngo));
+        await onLogin({ ...response, fullName: ngo.ngoName, userId: ngo.id });
+        onNavigate('ngo-admin');
         return;
       }
 
-      if (ngo.password !== password) {
-        setError('Incorrect password. Please try again.');
+      if (response.userType === 'ADMIN') {
+        await onLogin(response);
+        onNavigate('admin');
         return;
       }
 
-      localStorage.setItem('currentNGO', JSON.stringify(ngo));
-      onLogin('ngo', ngo);
-      onNavigate('ngo-admin');
+      setError('Unsupported account type from server.');
+    } catch (err) {
+      setError(getErrorMessage(err));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
@@ -75,6 +107,7 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
             variant="ghost"
             onClick={() => onNavigate('landing')}
             className="gap-2 mb-3 sm:mb-4 text-sm sm:text-base"
+            type="button"
           >
             <ArrowLeft className="w-3 h-3 sm:w-4 sm:h-4" />
             Back to Home
@@ -102,6 +135,7 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
             {/* User Type Toggle */}
             <div className="flex gap-2 mb-4 sm:mb-6 bg-gray-100 p-1 rounded-lg">
               <button
+                type="button"
                 onClick={() => setUserType('volunteer')}
                 className={`flex-1 py-2 sm:py-2.5 px-3 sm:px-4 rounded-md text-sm sm:text-base font-medium transition-all ${
                   userType === 'volunteer'
@@ -113,6 +147,7 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
                 Volunteer
               </button>
               <button
+                type="button"
                 onClick={() => setUserType('ngo')}
                 className={`flex-1 py-2 sm:py-2.5 px-3 sm:px-4 rounded-md text-sm sm:text-base font-medium transition-all ${
                   userType === 'ngo'
@@ -125,8 +160,14 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
               </button>
             </div>
 
-            {/* Login Form */}
-            <div className="space-y-4">
+            {/* ✅ Real Form */}
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {infoMessage && (
+                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                  <p className="text-sm text-blue-800">{infoMessage}</p>
+                </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Email Address
@@ -135,11 +176,13 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <Input
                     type="email"
+                    name="email"
+                    autoComplete="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="your.email@example.com"
                     className="pl-10 bg-white h-12"
-                    onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                    required
                   />
                 </div>
               </div>
@@ -152,15 +195,19 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                   <Input
                     type={showPassword ? 'text' : 'password'}
+                    name="password"
+                    autoComplete="current-password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="your password"
-                    className="pl-10 bg-white h-12"
-                    onKeyPress={(e) => e.key === 'Enter' && handleLogin()}
+                    className="pl-10 bg-white h-12 pr-10"
+                    required
                   />
                   <button
+                    type="button"
                     className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400"
-                    onClick={() => setShowPassword(!showPassword)}
+                    onClick={() => setShowPassword((s) => !s)}
+                    aria-label={showPassword ? 'Hide password' : 'Show password'}
                   >
                     {showPassword ? (
                       <EyeOff className="w-5 h-5" />
@@ -178,20 +225,22 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
               )}
 
               <Button
-                onClick={handleLogin}
+                type="submit"
+                disabled={isSubmitting}
                 className={`w-full h-12 text-base font-semibold shadow-lg hover:shadow-xl transition-all ${
                   userType === 'volunteer'
                     ? 'bg-secondary hover:bg-secondary/90'
                     : 'bg-primary hover:bg-primary/90'
                 }`}
               >
-                Sign In
+                {isSubmitting ? 'Signing In...' : 'Sign In'}
               </Button>
 
               <div className="text-center pt-4 border-t">
                 <p className="text-sm text-gray-600">
                   Don't have an account?{' '}
                   <button
+                    type="button"
                     onClick={() =>
                       onNavigate(
                         userType === 'volunteer'
@@ -207,7 +256,7 @@ export function LoginPage({ onNavigate, onLogin }: LoginPageProps) {
                   </button>
                 </p>
               </div>
-            </div>
+            </form>
           </CardContent>
         </Card>
 

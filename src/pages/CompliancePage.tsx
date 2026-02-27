@@ -22,91 +22,91 @@ export function CompliancePage() {
         <div className="bg-white rounded-2xl shadow-lg p-8 md:p-12 mb-12">
           <h2 className="text-3xl font-bold text-gray-900 mb-6">Compliance Overview</h2>
           <p className="text-lg text-gray-700 leading-relaxed mb-4">
-            At ImpactHub, we maintain the highest standards of compliance to ensure trust, transparency, and legal adherence. All registered NGOs must meet specific requirements and maintain proper documentation to operate on our platform.
+            At ImpactHub, we maintain the highest standards of compliance to ensure trust, transparency, and legal adherence. All registered NGOs must meet required legal and operational standards to operate on our platform.
           </p>
           <p className="text-lg text-gray-700 leading-relaxed">
             This page outlines the essential compliance requirements and best practices for NGOs registered with ImpactHub.
           </p>
         </div>
 
-        {/* Required Documents */}
+        {/* Key Compliance Requirements */}
         <div className="mb-12">
           <div className="flex items-center gap-4 mb-8">
             <div className="w-12 h-12 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center">
               <FileCheck className="w-6 h-6 text-white" />
             </div>
-            <h2 className="text-3xl font-bold text-gray-900">Required Documentation</h2>
+            <h2 className="text-3xl font-bold text-gray-900">Key Compliance Requirements</h2>
           </div>
 
           <div className="grid md:grid-cols-2 gap-6">
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-primary">
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Registration Certificates</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Registration & Legal Status</h3>
               <ul className="space-y-2 text-gray-700">
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0" />
-                  <span>Trust/Society/Section 8 Company Registration Certificate</span>
+                  <span>Maintain valid Trust/Society/Section 8 registration status</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0" />
-                  <span>12A and 80G Registration (if applicable)</span>
+                  <span>Maintain 12A and 80G compliance where applicable</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0" />
-                  <span>FCRA Registration (for foreign funding)</span>
+                  <span>Maintain FCRA compliance where applicable</span>
                 </li>
               </ul>
             </div>
 
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-secondary">
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Tax & Financial Documents</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Tax & Financial Compliance</h3>
               <ul className="space-y-2 text-gray-700">
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0" />
-                  <span>PAN Card of the organization</span>
+                  <span>Ensure PAN and tax identity details are valid and up to date</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0" />
-                  <span>Latest audited financial statements</span>
+                  <span>Complete regular financial audits as required</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0" />
-                  <span>Income Tax Returns (last 2 years)</span>
+                  <span>File income tax returns on time</span>
                 </li>
               </ul>
             </div>
 
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-accent">
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Governance Documents</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Governance Compliance</h3>
               <ul className="space-y-2 text-gray-700">
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0" />
-                  <span>Memorandum of Association (MOA)</span>
+                  <span>Follow your approved governance framework and bylaws</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0" />
-                  <span>Articles of Association/Bylaws</span>
+                  <span>Conduct governance and decision-making as per policy</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0" />
-                  <span>List of Board Members with ID proofs</span>
+                  <span>Maintain verified and accountable board/leadership records</span>
                 </li>
               </ul>
             </div>
 
             <div className="bg-white rounded-xl shadow-md p-6 border-l-4 border-blue-500">
-              <h3 className="text-xl font-bold text-gray-900 mb-3">Operational Documents</h3>
+              <h3 className="text-xl font-bold text-gray-900 mb-3">Operational Compliance</h3>
               <ul className="space-y-2 text-gray-700">
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0" />
-                  <span>Annual Reports (last 2 years)</span>
+                  <span>Review and track annual organizational performance</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0" />
-                  <span>Project implementation reports</span>
+                  <span>Track project implementation quality and outcomes</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <CheckCircle2 className="w-5 h-5 text-secondary mt-0.5 flex-shrink-0" />
-                  <span>Impact assessment documentation</span>
+                  <span>Measure and report impact through clear compliance practices</span>
                 </li>
               </ul>
             </div>
@@ -132,7 +132,7 @@ export function CompliancePage() {
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-2 h-2 bg-primary rounded-full mt-2"></div>
-                  <span>Adherence to Foreign Contribution Regulation Act (FCRA) if receiving foreign funds</span>
+                  <span>Adherence to Foreign Contribution Regulation Act (FCRA), where applicable</span>
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-2 h-2 bg-primary rounded-full mt-2"></div>
@@ -162,7 +162,7 @@ export function CompliancePage() {
                 </li>
                 <li className="flex items-start gap-3">
                   <div className="w-2 h-2 bg-secondary rounded-full mt-2"></div>
-                  <span>Transparent reporting of fund utilization</span>
+                  <span>Transparent reporting of resource utilization</span>
                 </li>
               </ul>
             </div>
@@ -201,9 +201,9 @@ export function CompliancePage() {
             </div>
 
             <div className="bg-white rounded-xl shadow-md p-6">
-              <h3 className="font-bold text-gray-900 mb-3">Ethical Fundraising</h3>
+              <h3 className="font-bold text-gray-900 mb-3">Ethical Outreach</h3>
               <p className="text-gray-600">
-                Follow ethical guidelines in all fundraising activities with clear communication about fund usage.
+                Follow ethical guidelines in all outreach activities with clear communication about program usage.
               </p>
             </div>
 
@@ -230,7 +230,7 @@ export function CompliancePage() {
             <div>
               <h3 className="font-bold text-gray-900 mb-2">Important Notice</h3>
               <p className="text-gray-700 mb-2">
-                NGOs must keep all compliance documents up to date and renew certifications before expiry. Failure to maintain compliance may result in suspension or removal from the ImpactHub platform.
+                NGOs must stay compliant with all applicable regulations and renew certifications before expiry. Failure to maintain compliance may result in suspension or removal from the ImpactHub platform.
               </p>
               <p className="text-gray-700">
                 For any questions regarding compliance requirements, please contact our support team at compliance@impacthub.org

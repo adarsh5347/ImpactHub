@@ -4,8 +4,8 @@ import { Button } from './ui/button';
 
 interface NavigationProps {
   currentPage: string;
-  onNavigate: (page: string) => void;
-  userRole?: 'donor' | 'volunteer' | 'ngo' | null;
+  onNavigate: (page: string, params?: any) => void;
+  userRole?: 'donor' | 'volunteer' | 'ngo' | 'admin' | null;
   currentUser?: any;
   onLogout?: () => void;
 }
@@ -16,12 +16,18 @@ export function Navigation({ currentPage, onNavigate, userRole, currentUser, onL
   const navItems = [
     { label: 'Home', page: 'landing' },
     { label: 'Browse NGOs', page: 'directory' },
-    { label: 'Volunteer', page: 'volunteer-dashboard' },
+    {
+      label: userRole === 'ngo' ? 'NGO' : userRole === 'admin' ? 'Admin' : 'Volunteer',
+      page: userRole === 'ngo' ? 'ngo-admin' : userRole === 'admin' ? 'admin' : 'volunteer-dashboard',
+    },
   ];
 
   const roleMenuItems = [
     { label: 'Volunteer Dashboard', page: 'volunteer-dashboard', role: 'volunteer' },
     { label: 'NGO Admin Panel', page: 'ngo-admin', role: 'ngo' },
+    { label: 'Admin Dashboard', page: 'admin', role: 'admin' },
+    { label: 'Registered Volunteers', page: 'admin-volunteers', role: 'admin' },
+    { label: 'NGO Approvals', page: 'admin-ngos', role: 'admin' },
   ];
 
   return (
@@ -70,7 +76,7 @@ export function Navigation({ currentPage, onNavigate, userRole, currentUser, onL
                   </div>
                   <div className="text-left">
                     <div className="text-sm font-semibold text-gray-900">
-                      {currentUser.fullName || currentUser.ngoName || 'User'}
+                      {currentUser.fullName || currentUser.ngoName || currentUser.email || 'User'}
                     </div>
                     <div className="text-xs text-gray-500 capitalize">{userRole}</div>
                   </div>
@@ -105,7 +111,7 @@ export function Navigation({ currentPage, onNavigate, userRole, currentUser, onL
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => onNavigate('login')}
+                  onClick={() => onNavigate('login', { loginType: 'volunteer' })}
                   className="border-2 border-secondary text-secondary hover:bg-secondary hover:text-white transition-all"
                 >
                   Sign In as Volunteer
@@ -113,7 +119,7 @@ export function Navigation({ currentPage, onNavigate, userRole, currentUser, onL
                 <Button
                   size="sm"
                   className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 shadow-md hover:shadow-lg transition-all"
-                  onClick={() => onNavigate('login')}
+                  onClick={() => onNavigate('login', { loginType: 'ngo' })}
                 >
                   NGO Sign In
                 </Button>
@@ -164,7 +170,7 @@ export function Navigation({ currentPage, onNavigate, userRole, currentUser, onL
                       </div>
                       <div>
                         <div className="font-semibold text-gray-900">
-                          {currentUser.fullName || currentUser.ngoName || 'User'}
+                          {currentUser.fullName || currentUser.ngoName || currentUser.email || 'User'}
                         </div>
                         <div className="text-sm text-gray-500 capitalize">{userRole}</div>
                       </div>
@@ -205,7 +211,7 @@ export function Navigation({ currentPage, onNavigate, userRole, currentUser, onL
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      onNavigate('login');
+                      onNavigate('login', { loginType: 'volunteer' });
                       setMobileMenuOpen(false);
                     }}
                     className="border-2 border-secondary text-secondary hover:bg-secondary hover:text-white"
@@ -216,7 +222,7 @@ export function Navigation({ currentPage, onNavigate, userRole, currentUser, onL
                     size="sm"
                     className="bg-gradient-to-r from-primary to-blue-600"
                     onClick={() => {
-                      onNavigate('login');
+                      onNavigate('login', { loginType: 'ngo' });
                       setMobileMenuOpen(false);
                     }}
                   >

@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Search, Filter, X } from 'lucide-react';
 import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../components/ui/select';
 import { Card } from '../components/ui/card';
 import { NGOCard } from '../components/NGOCard';
-import { mockNGOs } from '../lib/mock-data';
+import { ngoService } from '../lib/api/ngo.service';
+import type { NGO } from '../lib/api/types';
+import { getErrorMessage } from '../lib/api';
 
 interface NGODirectoryPageProps {
   onNavigate: (page: string, params?: any) => void;
@@ -16,16 +18,50 @@ export function NGODirectoryPage({ onNavigate }: NGODirectoryPageProps) {
   const [selectedCause, setSelectedCause] = useState<string>('all');
   const [selectedLocation, setSelectedLocation] = useState<string>('all');
   const [showVerifiedOnly, setShowVerifiedOnly] = useState(false);
+  const [ngos, setNgos] = useState<NGO[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    let active = true;
+    setIsLoading(true);
+    setError('');
+
+    ngoService
+      .getNGOs({
+        cause: selectedCause,
+        city: selectedLocation,
+        verified: showVerifiedOnly ? true : undefined,
+      })
+      .then((data) => {
+        if (!active) return;
+        setNgos(data);
+      })
+      .catch((err) => {
+        if (!active) return;
+        setError(getErrorMessage(err));
+      })
+      .finally(() => {
+        if (!active) return;
+        setIsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedCause, selectedLocation, showVerifiedOnly]);
 
   const causes = ['all', 'Education', 'Environment', 'Healthcare', 'Women Empowerment', 'Child Welfare', 'Rural Development'];
   const locations = ['all', 'Mumbai', 'Delhi', 'Bangalore', 'Pune', 'Chennai', 'Jaipur'];
 
-  const filteredNGOs = mockNGOs.filter((ngo) => {
-    const matchesSearch = ngo.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         ngo.mission.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCause = selectedCause === 'all' || ngo.cause === selectedCause;
-    const matchesLocation = selectedLocation === 'all' || ngo.location.includes(selectedLocation);
-    const matchesVerified = !showVerifiedOnly || ngo.verified;
+  const filteredNGOs = ngos.filter((ngo) => {
+    const ngoName = ngo.ngoName.toLowerCase();
+    const mission = (ngo.mission || '').toLowerCase();
+    const location = [ngo.city, ngo.state].filter(Boolean).join(' ').toLowerCase();
+    const matchesSearch = ngoName.includes(searchQuery.toLowerCase()) || mission.includes(searchQuery.toLowerCase());
+    const matchesCause = selectedCause === 'all' || (ngo.causeFocus || []).includes(selectedCause);
+    const matchesLocation = selectedLocation === 'all' || location.includes(selectedLocation.toLowerCase());
+    const matchesVerified = !showVerifiedOnly || Boolean(ngo.isVerified);
     
     return matchesSearch && matchesCause && matchesLocation && matchesVerified;
   });
@@ -128,13 +164,21 @@ export function NGODirectoryPage({ onNavigate }: NGODirectoryPageProps) {
       </div>
 
       {/* NGO Grid */}
-      {filteredNGOs.length > 0 ? (
+      {isLoading ? (
+        <Card className="p-12 text-center">
+          <p className="text-gray-600">Loading NGOs...</p>
+        </Card>
+      ) : error ? (
+        <Card className="p-12 text-center">
+          <p className="text-red-700">Failed to load NGOs: {error}</p>
+        </Card>
+      ) : filteredNGOs.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredNGOs.map((ngo) => (
             <NGOCard
               key={ngo.id}
               ngo={ngo}
-              onViewDetails={(id) => onNavigate('ngo-profile', { ngoId: id })}
+              onViewDetails={(id) => onNavigate('ngo-profile', { ngoId: String(id) })}
             />
           ))}
         </div>
