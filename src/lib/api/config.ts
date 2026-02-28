@@ -1,7 +1,32 @@
-const ENV_BASE_URL =
+function normalizeApiBaseUrl(url: string): string {
+  const trimmed = url.trim().replace(/\/+$/, "");
+  if (!trimmed) return "http://localhost:8080/api";
+
+  let parsed: URL;
+  try {
+    parsed = new URL(trimmed);
+  } catch {
+    return trimmed.endsWith("/api") ? trimmed : `${trimmed}/api`;
+  }
+
+  const normalizedPath = parsed.pathname.replace(/\/+$/, "");
+  if (!normalizedPath || normalizedPath === "/") {
+    parsed.pathname = "/api";
+    return parsed.toString().replace(/\/+$/, "");
+  }
+
+  if (!normalizedPath.endsWith("/api")) {
+    parsed.pathname = `${normalizedPath}/api`;
+  }
+
+  return parsed.toString().replace(/\/+$/, "");
+}
+
+const ENV_BASE_URL = normalizeApiBaseUrl(
   (typeof import.meta !== "undefined" &&
     (import.meta as any).env?.VITE_API_BASE_URL) ||
-  "http://localhost:8080/api";
+    "http://localhost:8080/api"
+);
 
 export const API_CONFIG = {
   baseURL: ENV_BASE_URL,
