@@ -142,11 +142,15 @@ export function NGOAdminPanel({ onNavigate }: NGOAdminPanelProps) {
 
     const form = new FormData(e.currentTarget);
     const objectivesRaw = String(form.get('objectives') || '');
+    const objectiveItems = objectivesRaw
+      .split(/\r?\n/)
+      .map((item) => item.replace(/^\s*(?:\d+[.)]|[-•])\s*/, '').trim())
+      .filter(Boolean);
     const payload: ProjectCreateRequest = {
       title: String(form.get('title') || ''),
       cause: String(form.get('cause') || ''),
       description: String(form.get('description') || ''),
-      objectives: objectivesRaw,
+      objectives: objectiveItems.length ? objectiveItems.join('\n') : undefined,
       beneficiaries: Number(form.get('beneficiaries') || 0),
       volunteersNeeded: Number(form.get('volunteers') || 0),
       startDate: String(form.get('startDate') || '') || undefined,
@@ -613,10 +617,10 @@ export function NGOAdminPanel({ onNavigate }: NGOAdminPanelProps) {
                         <Textarea
                           id="objectives"
                           name="objectives"
-                          placeholder="List project objectives"
-                          className="bg-white min-h-20"
+                          placeholder={'Enter one objective per line\nExample:\nImprove literacy rates in target schools\nTrain 200 volunteer mentors\nRun weekly learning workshops'}
+                          className="bg-white min-h-28"
                         />
-                        <p className="text-xs text-gray-500 mt-1">Leave blank if not provided.</p>
+                        <p className="text-xs text-gray-500 mt-1">Add each objective on a new line. They will be shown as a numbered list to volunteers.</p>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

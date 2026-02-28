@@ -132,7 +132,24 @@ export function ProjectDetailsPage({ projectId, onNavigate }: ProjectDetailsPage
 
   const volunteersNeeded = project?.volunteersNeeded ?? 0;
   const volunteersEnrolled = project?.volunteersEnrolled ?? 0;
-  const objectives = (project?.objectives || '').trim();
+  const objectiveItems = useMemo(() => {
+    const objectives = (project?.objectives || '').trim();
+    if (!objectives) return [] as string[];
+
+    const byLine = objectives
+      .split(/\r?\n/)
+      .map((item) => item.replace(/^\s*(?:\d+[.)]|[-•])\s*/, '').trim())
+      .filter(Boolean);
+
+    if (byLine.length > 1) return byLine;
+
+    const byInlineNumbering = objectives
+      .split(/\s*(?=\d+[.)]\s+)/)
+      .map((item) => item.replace(/^\s*(?:\d+[.)]|[-•])\s*/, '').trim())
+      .filter(Boolean);
+
+    return byInlineNumbering.length > 1 ? byInlineNumbering : [objectives];
+  }, [project?.objectives]);
 
   const volunteerProgress = useMemo(
     () => (volunteersNeeded ? (volunteersEnrolled / volunteersNeeded) * 100 : 0),
@@ -255,8 +272,14 @@ export function ProjectDetailsPage({ projectId, onNavigate }: ProjectDetailsPage
 
                 <div>
                   <h3 className="font-semibold text-gray-900 mb-3">Project Objectives</h3>
-                  {objectives ? (
-                    <p className="text-gray-700 leading-relaxed whitespace-pre-line">{objectives}</p>
+                  {objectiveItems.length ? (
+                    <ol className="list-decimal list-inside space-y-2 text-gray-700">
+                      {objectiveItems.map((objective, index) => (
+                        <li key={`${index}-${objective.slice(0, 20)}`} className="leading-relaxed">
+                          {objective}
+                        </li>
+                      ))}
+                    </ol>
                   ) : (
                     <p className="text-gray-500">Not provided</p>
                   )}
