@@ -107,10 +107,10 @@ export function VolunteerDashboard({ onNavigate }: VolunteerDashboardProps) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 gap-6 mb-8">
-        <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
+      <div className="flex justify-center mb-8">
+        <Card className="w-full max-w-sm bg-gradient-to-br from-green-50 to-green-100 border-green-200">
+          <CardContent className="p-6 text-center">
+            <div className="flex items-center justify-center mb-4">
               <div className="w-12 h-12 bg-secondary rounded-full flex items-center justify-center">
                 <Users className="w-6 h-6 text-white" />
               </div>
@@ -251,10 +251,6 @@ export function VolunteerDashboard({ onNavigate }: VolunteerDashboardProps) {
               <div className="p-4 bg-blue-50 rounded-lg">
                 <h4 className="font-semibold text-gray-900 mb-1">{activeEngagement?.projectTitle || 'No active engagement'}</h4>
                 <p className="text-sm text-gray-600 mb-2">Status: {activeEngagement?.status || '-'}</p>
-                <div className="flex items-center gap-2 text-sm text-gray-700 mb-3">
-                  <Clock className="w-4 h-4" />
-                  <span>{activeEngagement?.hoursContributed ?? 0} hours completed</span>
-                </div>
                 <Button variant="outline" size="sm" className="w-full">
                   View Details
                 </Button>
