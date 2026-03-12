@@ -314,16 +314,12 @@ export function NGOProfilePage({ ngoId, onNavigate }: NGOProfilePageProps) {
               </CardHeader>
               <CardContent className="space-y-3 text-sm">
                 <div>
-                  <p className="text-gray-600 mb-1">Registration Number</p>
-                  <p className="font-mono text-gray-900">{ngo.registrationNumber}</p>
+                  <p className="text-gray-600 mb-1">NGO Email</p>
+                  <p className="text-gray-900 break-all">{ngo.email || ngo.userEmail || '-'}</p>
                 </div>
                 <div>
-                  <p className="text-gray-600 mb-1">Year Founded</p>
-                  <p className="text-gray-900">{ngo.yearFounded}</p>
-                </div>
-                <div>
-                  <p className="text-gray-600 mb-1">Primary Cause</p>
-                  <p className="text-gray-900">{ngo.cause}</p>
+                  <p className="text-gray-600 mb-1">Contact Number</p>
+                  <p className="text-gray-900">{ngo.phone || ngo.primaryContactPhone || '-'}</p>
                 </div>
               </CardContent>
             </Card>
