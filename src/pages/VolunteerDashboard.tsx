@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Users, Clock, Award, MapPin, Calendar, CheckCircle2, Filter } from 'lucide-react';
+import { Users, Clock, MapPin, Calendar, CheckCircle2, Filter } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -55,13 +55,12 @@ export function VolunteerDashboard({ onNavigate }: VolunteerDashboardProps) {
   }, []);
 
   const volunteerStats = useMemo(() => {
+    const projectsJoined = activities.length;
     const hoursContributed = activities.reduce(
       (sum, activity) => sum + (activity.hoursContributed ?? 0),
       0
     );
-    const projectsJoined = activities.length;
-    const certificatesEarned = activities.filter((a) => a.status === 'COMPLETED').length;
-    return { hoursContributed, projectsJoined, certificatesEarned };
+    return { projectsJoined, hoursContributed };
   }, [activities]);
 
   const allSkills = ['all', 'Teaching', 'Healthcare', 'Event Management', 'Business Management', 'Communication'];
@@ -89,6 +88,11 @@ export function VolunteerDashboard({ onNavigate }: VolunteerDashboardProps) {
     [activities, projectStatusById]
   );
 
+  const activeEngagement = useMemo(
+    () => activities.find((activity) => activity.status === 'ACTIVE') ?? activities[0] ?? null,
+    [activities]
+  );
+
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
       {/* Header */}
@@ -103,21 +107,7 @@ export function VolunteerDashboard({ onNavigate }: VolunteerDashboardProps) {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <Card className="bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-primary rounded-full flex items-center justify-center">
-                <Clock className="w-6 h-6 text-white" />
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">
-              {volunteerStats.hoursContributed}
-            </div>
-            <div className="text-sm text-gray-700">Hours Contributed</div>
-          </CardContent>
-        </Card>
-
+      <div className="grid grid-cols-1 gap-6 mb-8">
         <Card className="bg-gradient-to-br from-green-50 to-green-100 border-green-200">
           <CardContent className="p-6">
             <div className="flex items-center justify-between mb-4">
@@ -129,20 +119,6 @@ export function VolunteerDashboard({ onNavigate }: VolunteerDashboardProps) {
               {volunteerStats.projectsJoined}
             </div>
             <div className="text-sm text-gray-700">Projects Joined</div>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-yellow-50 to-yellow-100 border-yellow-200">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div className="w-12 h-12 bg-accent rounded-full flex items-center justify-center">
-                <Award className="w-6 h-6 text-white" />
-              </div>
-            </div>
-            <div className="text-3xl font-bold text-gray-900 mb-1">
-              {volunteerStats.certificatesEarned}
-            </div>
-            <div className="text-sm text-gray-700">Certificates Earned</div>
           </CardContent>
         </Card>
       </div>
@@ -273,35 +249,11 @@ export function VolunteerDashboard({ onNavigate }: VolunteerDashboardProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="p-4 bg-blue-50 rounded-lg">
-                <h4 className="font-semibold text-gray-900 mb-1">{activities[0]?.projectTitle || 'No active engagement'}</h4>
-                <p className="text-sm text-gray-600 mb-2">Status: {activities[0]?.status || '-'}</p>
+                <h4 className="font-semibold text-gray-900 mb-1">{activeEngagement?.projectTitle || 'No active engagement'}</h4>
+                <p className="text-sm text-gray-600 mb-2">Status: {activeEngagement?.status || '-'}</p>
                 <div className="flex items-center gap-2 text-sm text-gray-700 mb-3">
                   <Clock className="w-4 h-4" />
-                  <span>{activities[0]?.hoursContributed ?? 0} hours completed</span>
-                </div>
-                <Button variant="outline" size="sm" className="w-full">
-                  View Details
-                </Button>
-              </div>
-
-              <div className="p-4 bg-green-50 rounded-lg">
-                <h4 className="font-semibold text-gray-900 mb-1">{activities[1]?.projectTitle || 'No active engagement'}</h4>
-                <p className="text-sm text-gray-600 mb-2">Status: {activities[1]?.status || '-'}</p>
-                <div className="flex items-center gap-2 text-sm text-gray-700 mb-3">
-                  <Clock className="w-4 h-4" />
-                  <span>{activities[1]?.hoursContributed ?? 0} hours completed</span>
-                </div>
-                <Button variant="outline" size="sm" className="w-full">
-                  View Details
-                </Button>
-              </div>
-
-              <div className="p-4 bg-yellow-50 rounded-lg">
-                <h4 className="font-semibold text-gray-900 mb-1">{activities[2]?.projectTitle || 'No active engagement'}</h4>
-                <p className="text-sm text-gray-600 mb-2">Status: {activities[2]?.status || '-'}</p>
-                <div className="flex items-center gap-2 text-sm text-gray-700 mb-3">
-                  <Clock className="w-4 h-4" />
-                  <span>{activities[2]?.hoursContributed ?? 0} hours completed</span>
+                  <span>{activeEngagement?.hoursContributed ?? 0} hours completed</span>
                 </div>
                 <Button variant="outline" size="sm" className="w-full">
                   View Details
@@ -372,29 +324,6 @@ export function VolunteerDashboard({ onNavigate }: VolunteerDashboardProps) {
               <Button variant="outline" className="w-full">
                 Update Profile
               </Button>
-            </CardContent>
-          </Card>
-
-          {/* Certificates */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Certificates</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-                <Award className="w-8 h-8 text-green-600" />
-                <div className="flex-1">
-                  <p className="font-semibold text-sm text-gray-900">Education Volunteer</p>
-                  <p className="text-xs text-gray-600">Dec 2024</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
-                <Award className="w-8 h-8 text-green-600" />
-                <div className="flex-1">
-                  <p className="font-semibold text-sm text-gray-900">Healthcare Support</p>
-                  <p className="text-xs text-gray-600">Nov 2024</p>
-                </div>
-              </div>
             </CardContent>
           </Card>
         </div>
