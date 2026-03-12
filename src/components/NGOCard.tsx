@@ -1,7 +1,6 @@
-import { CheckCircle2, MapPin, FolderOpen, Users } from 'lucide-react';
+import { CheckCircle2, MapPin, FolderOpen } from 'lucide-react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
-import { Badge } from './ui/badge';
 import type { NGO } from '../lib/api/types';
 import { NgoLogo } from './NgoLogo';
 
@@ -11,8 +10,6 @@ interface NGOCardProps {
 }
 
 export function NGOCard({ ngo, onViewDetails }: NGOCardProps) {
-  // Calculate total volunteers needed across projects (mock calculation)
-  const volunteersNeeded = Math.floor(Math.random() * 20) + 5;
   const ngoName = ngo.ngoName;
   const coverImage = ngo.coverImageUrl || 'https://images.unsplash.com/photo-1559027615-cd4628902d4a?w=800&h=400&fit=crop';
   const location = [ngo.city, ngo.state].filter(Boolean).join(', ') || 'India';
@@ -26,14 +23,6 @@ export function NGOCard({ ngo, onViewDetails }: NGOCardProps) {
           alt={ngoName}
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
         />
-        {volunteersNeeded > 0 && (
-          <div className="absolute top-3 right-3">
-            <Badge className="bg-secondary text-white border-0 shadow-md">
-              <Users className="w-3 h-3 mr-1" />
-              {volunteersNeeded} volunteers needed
-            </Badge>
-          </div>
-        )}
       </div>
       <CardContent className="p-6">
         <div className="flex items-start gap-4 mb-4">
@@ -58,11 +47,6 @@ export function NGOCard({ ngo, onViewDetails }: NGOCardProps) {
           <div className="flex items-center gap-1">
             <FolderOpen className="w-4 h-4" />
             <span>{ngo.activeProjects ?? 0} Active</span>
-          </div>
-          <div className="text-gray-400">•</div>
-          <div className="flex items-center gap-1">
-            <Users className="w-4 h-4 text-secondary" />
-            <span className="text-secondary font-medium">{volunteersNeeded} needed</span>
           </div>
         </div>
 
