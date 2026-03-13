@@ -15,8 +15,29 @@ import type {
 } from "./types";
 
 export const projectService = {
-  createProject: async (data: ProjectCreateRequest): Promise<Project> => {
-    const response = await apiClient.post<Project>(API_ENDPOINTS.PROJECTS.CREATE, data);
+  createProject: async (ngoId: string | number, data: ProjectCreateRequest): Promise<Project> => {
+    const cleanedPayload: ProjectCreateRequest = {
+      title: data.title.trim(),
+      ...(data.description?.trim() ? { description: data.description.trim() } : {}),
+      ...(data.objectives?.trim() ? { objectives: data.objectives.trim() } : {}),
+      ...(data.cause?.trim() ? { cause: data.cause.trim() } : {}),
+      ...(data.location?.trim() ? { location: data.location.trim() } : {}),
+      ...(data.status ? { status: data.status } : {}),
+      ...(data.startDate ? { startDate: data.startDate } : {}),
+      ...(data.endDate ? { endDate: data.endDate } : {}),
+      ...(typeof data.beneficiaries === "number" && data.beneficiaries > 0
+        ? { beneficiaries: data.beneficiaries }
+        : {}),
+      ...(data.imageUrl?.trim() ? { imageUrl: data.imageUrl.trim() } : {}),
+      ...(Array.isArray(data.requiredResources) && data.requiredResources.length > 0
+        ? { requiredResources: data.requiredResources }
+        : {}),
+      ...(typeof data.volunteersNeeded === "number" && data.volunteersNeeded > 0
+        ? { volunteersNeeded: data.volunteersNeeded }
+        : {}),
+    };
+
+    const response = await apiClient.post<Project>(API_ENDPOINTS.NGOS.PROJECTS(ngoId), cleanedPayload);
     return response.data;
   },
 

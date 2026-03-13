@@ -33,6 +33,7 @@ export function NGOAdminPanel({ onNavigate }: NGOAdminPanelProps) {
   const [projectError, setProjectError] = useState('');
   const [projectSuccess, setProjectSuccess] = useState('');
   const [isCreating, setIsCreating] = useState(false);
+  const [projectCause, setProjectCause] = useState('');
   const [completingProjectId, setCompletingProjectId] = useState<number | null>(null);
   const [enrollmentGroups, setEnrollmentGroups] = useState<ProjectEnrollmentGroup[]>([]);
   const [expandedProjectIds, setExpandedProjectIds] = useState<Record<number, boolean>>({});
@@ -148,14 +149,14 @@ export function NGOAdminPanel({ onNavigate }: NGOAdminPanelProps) {
       .filter(Boolean);
     const payload: ProjectCreateRequest = {
       title: String(form.get('title') || ''),
-      cause: String(form.get('cause') || ''),
+      cause: projectCause,
       description: String(form.get('description') || ''),
       objectives: objectiveItems.length ? objectiveItems.join('\n') : undefined,
       beneficiaries: Number(form.get('beneficiaries') || 0),
       volunteersNeeded: Number(form.get('volunteers') || 0),
       startDate: String(form.get('startDate') || '') || undefined,
       endDate: String(form.get('endDate') || '') || undefined,
-      location: `${currentNGO.city || ''}, ${currentNGO.state || ''}`.trim(),
+      location: [currentNGO.city, currentNGO.state].filter(Boolean).join(', ') || undefined,
       status: 'ONGOING',
     };
 
@@ -164,12 +165,18 @@ export function NGOAdminPanel({ onNavigate }: NGOAdminPanelProps) {
       return;
     }
 
+    if (!payload.cause) {
+      setProjectError('Cause category is required.');
+      return;
+    }
+
     try {
       setIsCreating(true);
-      await projectService.createProject(payload);
+      await projectService.createProject(currentNGO.id, payload);
       const refreshed = await ngoService.getNGOProjects(currentNGO.id);
       setNgoProjects(refreshed);
       setShowProjectForm(false);
+      setProjectCause('');
       setProjectSuccess('Project created successfully.');
     } catch (err) {
       setProjectError(getErrorMessage(err));
@@ -589,7 +596,7 @@ export function NGOAdminPanel({ onNavigate }: NGOAdminPanelProps) {
                         </div>
                         <div>
                           <Label htmlFor="cause">Cause Category</Label>
-                          <Select name="cause">
+                          <Select value={projectCause} onValueChange={setProjectCause}>
                             <SelectTrigger className="bg-white">
                               <SelectValue placeholder="Select cause" />
                             </SelectTrigger>

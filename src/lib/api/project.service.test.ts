@@ -34,7 +34,7 @@ describe('projectService', () => {
     mockApiClient.put.mockResolvedValueOnce({ data: { id: 10, title: 'Updated' } });
     mockApiClient.delete.mockResolvedValueOnce({});
 
-    const created = await projectService.createProject({
+    const created = await projectService.createProject(7, {
       title: 'Created',
       status: 'ONGOING',
     });
