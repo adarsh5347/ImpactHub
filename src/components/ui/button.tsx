@@ -40,7 +40,7 @@ type ButtonProps = React.ComponentProps<"button"> &
   };
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, asChild = false, ...props }, ref) => {
+  ({ className, variant, size, asChild = false, type, ...props }, ref) => {
     const Comp = asChild ? Slot : "button";
 
     return (
@@ -48,6 +48,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
         ref={ref}
         data-slot="button"
         className={cn(buttonVariants({ variant, size, className }))}
+        {...(!asChild ? { type: type ?? "button" } : {})}
         {...props}
       />
     );
