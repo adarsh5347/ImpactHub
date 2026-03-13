@@ -14,85 +14,114 @@ import type {
   ProjectUpdateRequest,
 } from "./types";
 
-function shouldFallbackCreate(status?: number): boolean {
-  return status === 401 || status === 403 || status === 404 || status === 405;
+type ProjectCreateVariant = {
+  endpoint: string;
+  payload: Record<string, unknown>;
+};
+
+function shouldRetryCreate(status?: number): boolean {
+  return status === 400 || status === 401 || status === 403 || status === 404 || status === 405;
 }
 
-function shouldRetryWithRelaxedPayload(status?: number): boolean {
-  return status === 400 || shouldFallbackCreate(status);
+function extractProjectResponse(data: unknown): Project {
+  if (data && typeof data === "object" && "data" in (data as Record<string, unknown>)) {
+    return (data as { data: Project }).data;
+  }
+
+  return data as Project;
+}
+
+function toObjectiveList(value?: string): string[] | undefined {
+  if (!value?.trim()) return undefined;
+
+  const objectives = value
+    .split(/\r?\n/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+
+  return objectives.length ? objectives : undefined;
+}
+
+function buildCreateVariants(
+  ngoId: string | number,
+  payload: ProjectCreateRequest
+): ProjectCreateVariant[] {
+  const objectivesList = toObjectiveList(payload.objectives);
+
+  const basePayload: Record<string, unknown> = {
+    title: payload.title.trim(),
+    ...(payload.description?.trim() ? { description: payload.description.trim() } : {}),
+    ...(payload.objectives?.trim() ? { objectives: payload.objectives.trim() } : {}),
+    ...(payload.cause?.trim() ? { cause: payload.cause.trim() } : {}),
+    ...(payload.location?.trim() ? { location: payload.location.trim() } : {}),
+    ...(payload.status ? { status: payload.status } : {}),
+    ...(payload.startDate ? { startDate: payload.startDate } : {}),
+    ...(payload.endDate ? { endDate: payload.endDate } : {}),
+    ...(typeof payload.beneficiaries === "number" && payload.beneficiaries > 0
+      ? { beneficiaries: payload.beneficiaries }
+      : {}),
+    ...(payload.imageUrl?.trim() ? { imageUrl: payload.imageUrl.trim() } : {}),
+    ...(Array.isArray(payload.requiredResources) && payload.requiredResources.length > 0
+      ? { requiredResources: payload.requiredResources }
+      : {}),
+    ...(typeof payload.volunteersNeeded === "number" && payload.volunteersNeeded > 0
+      ? { volunteersNeeded: payload.volunteersNeeded }
+      : {}),
+  };
+
+  const minimalPayload: Record<string, unknown> = {
+    title: basePayload.title,
+    ...(basePayload.description ? { description: basePayload.description } : {}),
+    ...(basePayload.cause ? { cause: basePayload.cause } : {}),
+    ...(basePayload.location ? { location: basePayload.location } : {}),
+    ...(basePayload.startDate ? { startDate: basePayload.startDate } : {}),
+    ...(basePayload.endDate ? { endDate: basePayload.endDate } : {}),
+    ...(typeof basePayload.beneficiaries === "number" ? { beneficiaries: basePayload.beneficiaries } : {}),
+    ...(typeof basePayload.volunteersNeeded === "number" ? { volunteersNeeded: basePayload.volunteersNeeded } : {}),
+  };
+
+  const arrayObjectivesPayload: Record<string, unknown> = {
+    ...minimalPayload,
+    ...(objectivesList ? { objectives: objectivesList } : {}),
+  };
+
+  const baseWithNgoId = { ...basePayload, ngoId };
+  const minimalWithNgoId = { ...minimalPayload, ngoId };
+  const arrayObjectivesWithNgoId = { ...arrayObjectivesPayload, ngoId };
+
+  return [
+    { endpoint: API_ENDPOINTS.NGOS.PROJECTS(ngoId), payload: basePayload },
+    { endpoint: API_ENDPOINTS.NGOS.PROJECTS(ngoId), payload: minimalPayload },
+    { endpoint: API_ENDPOINTS.NGOS.PROJECTS(ngoId), payload: arrayObjectivesPayload },
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE, payload: baseWithNgoId },
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE, payload: minimalWithNgoId },
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE, payload: arrayObjectivesWithNgoId },
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE_ALT, payload: baseWithNgoId },
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE_ALT, payload: minimalWithNgoId },
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE_ALT, payload: arrayObjectivesWithNgoId },
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE_ALT, payload: minimalPayload },
+  ];
 }
 
 export const projectService = {
   createProject: async (ngoId: string | number, data: ProjectCreateRequest): Promise<Project> => {
-    const cleanedPayload: ProjectCreateRequest = {
-      title: data.title.trim(),
-      ...(data.description?.trim() ? { description: data.description.trim() } : {}),
-      ...(data.objectives?.trim() ? { objectives: data.objectives.trim() } : {}),
-      ...(data.cause?.trim() ? { cause: data.cause.trim() } : {}),
-      ...(data.location?.trim() ? { location: data.location.trim() } : {}),
-      ...(data.status ? { status: data.status } : {}),
-      ...(data.startDate ? { startDate: data.startDate } : {}),
-      ...(data.endDate ? { endDate: data.endDate } : {}),
-      ...(typeof data.beneficiaries === "number" && data.beneficiaries > 0
-        ? { beneficiaries: data.beneficiaries }
-        : {}),
-      ...(data.imageUrl?.trim() ? { imageUrl: data.imageUrl.trim() } : {}),
-      ...(Array.isArray(data.requiredResources) && data.requiredResources.length > 0
-        ? { requiredResources: data.requiredResources }
-        : {}),
-      ...(typeof data.volunteersNeeded === "number" && data.volunteersNeeded > 0
-        ? { volunteersNeeded: data.volunteersNeeded }
-        : {}),
-    };
+    const variants = buildCreateVariants(ngoId, data);
+    let lastError: unknown = null;
 
-    const relaxedPayload = {
-      title: cleanedPayload.title,
-      ...(cleanedPayload.description ? { description: cleanedPayload.description } : {}),
-      ...(cleanedPayload.cause ? { cause: cleanedPayload.cause } : {}),
-      ...(cleanedPayload.location ? { location: cleanedPayload.location } : {}),
-      ...(cleanedPayload.startDate ? { startDate: cleanedPayload.startDate } : {}),
-      ...(cleanedPayload.endDate ? { endDate: cleanedPayload.endDate } : {}),
-      ...(typeof cleanedPayload.beneficiaries === "number" ? { beneficiaries: cleanedPayload.beneficiaries } : {}),
-      ...(typeof cleanedPayload.volunteersNeeded === "number" ? { volunteersNeeded: cleanedPayload.volunteersNeeded } : {}),
-    };
-
-    try {
-      const response = await apiClient.post<Project>(API_ENDPOINTS.NGOS.PROJECTS(ngoId), cleanedPayload);
-      return response.data;
-    } catch (error: any) {
-      const status = error?.response?.status as number | undefined;
-      if (!shouldRetryWithRelaxedPayload(status)) {
-        throw error;
-      }
-
+    for (const variant of variants) {
       try {
-        const retrySameEndpoint = await apiClient.post<Project>(API_ENDPOINTS.NGOS.PROJECTS(ngoId), relaxedPayload);
-        return retrySameEndpoint.data;
-      } catch (sameEndpointError: any) {
-        const sameEndpointStatus = sameEndpointError?.response?.status as number | undefined;
-        if (!shouldFallbackCreate(sameEndpointStatus) && sameEndpointStatus !== 400) {
-          throw sameEndpointError;
+        const response = await apiClient.post<Project | { data: Project }>(variant.endpoint, variant.payload);
+        return extractProjectResponse(response.data);
+      } catch (error: any) {
+        lastError = error;
+        const status = error?.response?.status as number | undefined;
+        if (!shouldRetryCreate(status)) {
+          throw error;
         }
-      }
-
-      const fallbackPayload = {
-        ...relaxedPayload,
-        ngoId,
-      };
-
-      try {
-        const fallbackResponse = await apiClient.post<Project>(API_ENDPOINTS.PROJECTS.CREATE, fallbackPayload);
-        return fallbackResponse.data;
-      } catch (fallbackError: any) {
-        const fallbackStatus = fallbackError?.response?.status as number | undefined;
-        if (fallbackStatus !== 400) {
-          throw fallbackError;
-        }
-
-        const fallbackWithoutNgoId = await apiClient.post<Project>(API_ENDPOINTS.PROJECTS.CREATE, relaxedPayload);
-        return fallbackWithoutNgoId.data;
       }
     }
+
+    throw lastError;
   },
 
   /**

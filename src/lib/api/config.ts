@@ -73,6 +73,7 @@ export const API_ENDPOINTS = {
 
   PROJECTS: {
     CREATE: "/projects",
+    CREATE_ALT: "/projects/create",
     LIST: "/projects",
     DETAIL: (id: string | number) => `/projects/${id}`,
     UPDATE: (id: string | number) => `/projects/${id}`,

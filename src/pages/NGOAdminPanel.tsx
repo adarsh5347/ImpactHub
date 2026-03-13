@@ -138,26 +138,39 @@ export function NGOAdminPanel({ onNavigate }: NGOAdminPanelProps) {
 
   const handleCreateProject = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!currentNGO) return;
-    setProjectError('');
+    if (!currentNGO) {
+      setProjectError('Unable to identify the active NGO account. Please sign in again.');
+      return;
+    }
 
-    const form = new FormData(e.currentTarget);
+    setProjectError('');
+    setProjectSuccess('');
+
+    const formElement = e.currentTarget;
+    const form = new FormData(formElement);
     const objectivesRaw = String(form.get('objectives') || '');
     const objectiveItems = objectivesRaw
       .split(/\r?\n/)
       .map((item) => item.replace(/^\s*(?:\d+[.)]|[-•])\s*/, '').trim())
       .filter(Boolean);
+    const title = String(form.get('title') || '').trim();
+    const description = String(form.get('description') || '').trim();
+    const beneficiariesValue = Number(form.get('beneficiaries') || 0);
+    const volunteersValue = Number(form.get('volunteers') || 0);
+    const startDate = String(form.get('startDate') || '').trim();
+    const endDate = String(form.get('endDate') || '').trim();
+
     const payload: ProjectCreateRequest = {
-      title: String(form.get('title') || ''),
+      title,
       cause: projectCause,
-      description: String(form.get('description') || ''),
+      description,
       objectives: objectiveItems.length ? objectiveItems.join('\n') : undefined,
-      beneficiaries: Number(form.get('beneficiaries') || 0),
-      volunteersNeeded: Number(form.get('volunteers') || 0),
-      startDate: String(form.get('startDate') || '') || undefined,
-      endDate: String(form.get('endDate') || '') || undefined,
+      beneficiaries: beneficiariesValue,
+      volunteersNeeded: volunteersValue,
+      startDate: startDate || undefined,
+      endDate: endDate || undefined,
       location: [currentNGO.city, currentNGO.state].filter(Boolean).join(', ') || undefined,
-      status: 'ONGOING',
+      status: 'OPEN',
     };
 
     if (!payload.title) {
@@ -170,12 +183,34 @@ export function NGOAdminPanel({ onNavigate }: NGOAdminPanelProps) {
       return;
     }
 
+    if (volunteersValue <= 0) {
+      setProjectError('Volunteers needed must be greater than 0.');
+      return;
+    }
+
+    if (beneficiariesValue < 0) {
+      setProjectError('Beneficiaries cannot be negative.');
+      return;
+    }
+
+    if (startDate && endDate && new Date(endDate) < new Date(startDate)) {
+      setProjectError('End date must be on or after the start date.');
+      return;
+    }
+
     try {
       setIsCreating(true);
-      await projectService.createProject(currentNGO.id, payload);
-      const refreshed = await ngoService.getNGOProjects(currentNGO.id);
-      setNgoProjects(refreshed);
+      const createdProject = await projectService.createProject(currentNGO.id, payload);
+
+      try {
+        const refreshed = await ngoService.getNGOProjects(currentNGO.id);
+        setNgoProjects(refreshed);
+      } catch {
+        setNgoProjects((prev) => [createdProject, ...prev.filter((project) => project.id !== createdProject.id)]);
+      }
+
       setShowProjectForm(false);
+      formElement.reset();
       setProjectCause('');
       setProjectSuccess('Project created successfully.');
     } catch (err) {
