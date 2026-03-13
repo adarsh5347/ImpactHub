@@ -14,6 +14,10 @@ import type {
   ProjectUpdateRequest,
 } from "./types";
 
+function shouldFallbackCreate(status?: number): boolean {
+  return status === 401 || status === 403 || status === 404 || status === 405;
+}
+
 export const projectService = {
   createProject: async (ngoId: string | number, data: ProjectCreateRequest): Promise<Project> => {
     const cleanedPayload: ProjectCreateRequest = {
@@ -37,8 +41,22 @@ export const projectService = {
         : {}),
     };
 
-    const response = await apiClient.post<Project>(API_ENDPOINTS.NGOS.PROJECTS(ngoId), cleanedPayload);
-    return response.data;
+    try {
+      const response = await apiClient.post<Project>(API_ENDPOINTS.NGOS.PROJECTS(ngoId), cleanedPayload);
+      return response.data;
+    } catch (error: any) {
+      const status = error?.response?.status as number | undefined;
+      if (!shouldFallbackCreate(status)) {
+        throw error;
+      }
+
+      const fallbackPayload = {
+        ...cleanedPayload,
+        ngoId,
+      };
+      const fallbackResponse = await apiClient.post<Project>(API_ENDPOINTS.PROJECTS.CREATE, fallbackPayload);
+      return fallbackResponse.data;
+    }
   },
 
   /**

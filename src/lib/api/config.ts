@@ -24,7 +24,8 @@ function normalizeApiBaseUrl(url: string): string {
 
 const ENV_BASE_URL = normalizeApiBaseUrl(
   (typeof import.meta !== "undefined" &&
-    (import.meta as any).env?.VITE_API_BASE_URL) ||
+    ((import.meta as any).env?.VITE_API_BASE_URL ||
+      (import.meta as any).env?.VITE_API_URL)) ||
     "http://localhost:8080/api"
 );
 
