@@ -601,9 +601,9 @@ export function NGOAdminPanel({ onNavigate }: NGOAdminPanelProps) {
                               <SelectValue placeholder="Select cause" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="education">Education</SelectItem>
-                              <SelectItem value="healthcare">Healthcare</SelectItem>
-                              <SelectItem value="environment">Environment</SelectItem>
+                              <SelectItem value="Education">Education</SelectItem>
+                              <SelectItem value="Healthcare">Healthcare</SelectItem>
+                              <SelectItem value="Environment">Environment</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>

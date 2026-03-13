@@ -18,6 +18,10 @@ function shouldFallbackCreate(status?: number): boolean {
   return status === 401 || status === 403 || status === 404 || status === 405;
 }
 
+function shouldRetryWithRelaxedPayload(status?: number): boolean {
+  return status === 400 || shouldFallbackCreate(status);
+}
+
 export const projectService = {
   createProject: async (ngoId: string | number, data: ProjectCreateRequest): Promise<Project> => {
     const cleanedPayload: ProjectCreateRequest = {
@@ -41,21 +45,53 @@ export const projectService = {
         : {}),
     };
 
+    const relaxedPayload = {
+      title: cleanedPayload.title,
+      ...(cleanedPayload.description ? { description: cleanedPayload.description } : {}),
+      ...(cleanedPayload.cause ? { cause: cleanedPayload.cause } : {}),
+      ...(cleanedPayload.location ? { location: cleanedPayload.location } : {}),
+      ...(cleanedPayload.startDate ? { startDate: cleanedPayload.startDate } : {}),
+      ...(cleanedPayload.endDate ? { endDate: cleanedPayload.endDate } : {}),
+      ...(typeof cleanedPayload.beneficiaries === "number" ? { beneficiaries: cleanedPayload.beneficiaries } : {}),
+      ...(typeof cleanedPayload.volunteersNeeded === "number" ? { volunteersNeeded: cleanedPayload.volunteersNeeded } : {}),
+    };
+
     try {
       const response = await apiClient.post<Project>(API_ENDPOINTS.NGOS.PROJECTS(ngoId), cleanedPayload);
       return response.data;
     } catch (error: any) {
       const status = error?.response?.status as number | undefined;
-      if (!shouldFallbackCreate(status)) {
+      if (!shouldRetryWithRelaxedPayload(status)) {
         throw error;
       }
 
+      try {
+        const retrySameEndpoint = await apiClient.post<Project>(API_ENDPOINTS.NGOS.PROJECTS(ngoId), relaxedPayload);
+        return retrySameEndpoint.data;
+      } catch (sameEndpointError: any) {
+        const sameEndpointStatus = sameEndpointError?.response?.status as number | undefined;
+        if (!shouldFallbackCreate(sameEndpointStatus) && sameEndpointStatus !== 400) {
+          throw sameEndpointError;
+        }
+      }
+
       const fallbackPayload = {
-        ...cleanedPayload,
+        ...relaxedPayload,
         ngoId,
       };
-      const fallbackResponse = await apiClient.post<Project>(API_ENDPOINTS.PROJECTS.CREATE, fallbackPayload);
-      return fallbackResponse.data;
+
+      try {
+        const fallbackResponse = await apiClient.post<Project>(API_ENDPOINTS.PROJECTS.CREATE, fallbackPayload);
+        return fallbackResponse.data;
+      } catch (fallbackError: any) {
+        const fallbackStatus = fallbackError?.response?.status as number | undefined;
+        if (fallbackStatus !== 400) {
+          throw fallbackError;
+        }
+
+        const fallbackWithoutNgoId = await apiClient.post<Project>(API_ENDPOINTS.PROJECTS.CREATE, relaxedPayload);
+        return fallbackWithoutNgoId.data;
+      }
     }
   },
 

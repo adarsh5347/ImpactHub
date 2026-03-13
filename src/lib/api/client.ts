@@ -88,6 +88,19 @@ apiClient.interceptors.response.use(
 export function getErrorMessage(err: unknown): string {
   if (axios.isAxiosError(err)) {
     const data: any = err.response?.data;
+    const validationErrors = data?.errors || data?.fieldErrors || data?.violations;
+    if (Array.isArray(validationErrors) && validationErrors.length > 0) {
+      const first = validationErrors[0];
+      if (typeof first === "string") return first;
+      if (first?.defaultMessage) return String(first.defaultMessage);
+      if (first?.message) return String(first.message);
+    }
+
+    if (validationErrors && typeof validationErrors === "object") {
+      const firstMessage = Object.values(validationErrors).find((value) => typeof value === "string");
+      if (typeof firstMessage === "string") return firstMessage;
+    }
+
     return (
       data?.message ||
       data?.error ||
