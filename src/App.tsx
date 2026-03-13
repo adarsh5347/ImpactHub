@@ -24,8 +24,6 @@ import { Toaster } from './components/ui/sonner';
 
 type Page = 'landing' | 'directory' | 'ngo-profile' | 'project' | 'volunteer-dashboard' | 'ngo-admin' | 'ngo-project-edit' | 'admin' | 'admin-ngos' | 'admin-volunteers' | 'volunteer-registration' | 'ngo-registration' | 'login' | 'about' | 'how-it-works' | 'compliance';
 
-console.log(import.meta.env.VITE_API_URL);
-
 interface PageParams {
   ngoId?: string;
   projectId?: string;

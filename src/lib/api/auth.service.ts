@@ -23,6 +23,14 @@ export interface AuthResponse {
   message: string | null;
 }
 
+type LoginVariant = {
+  email?: string;
+  username?: string;
+  password: string;
+  userType?: string;
+  role?: string;
+};
+
 function decodeBase64Url(value: string): string | null {
   try {
     const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
@@ -48,6 +56,40 @@ function readRoleClaim(payload: Record<string, unknown>): string[] {
   }
 
   return [];
+}
+
+function normalizeLoginRole(role?: string | null): string | null {
+  if (!role) return null;
+  const normalized = role.toUpperCase();
+  if (normalized === "VOLUNTEER" || normalized === "NGO" || normalized === "ADMIN") {
+    return normalized;
+  }
+  return null;
+}
+
+function buildLoginVariants(email: string, password: string, userTypeHint?: string): LoginVariant[] {
+  const normalizedHint = normalizeLoginRole(userTypeHint);
+
+  return [
+    { email, password },
+    ...(normalizedHint
+      ? [
+          { email, password, userType: normalizedHint },
+          { email, password, role: normalizedHint },
+          { username: email, password, userType: normalizedHint },
+          { username: email, password, role: normalizedHint },
+        ]
+      : []),
+    { username: email, password },
+  ];
+}
+
+function extractAuthResponse(data: unknown): AuthResponse {
+  if (data && typeof data === "object" && "data" in (data as Record<string, unknown>)) {
+    return (data as { data: AuthResponse }).data;
+  }
+
+  return data as AuthResponse;
 }
 
 export const authService = {
@@ -87,15 +129,31 @@ export const authService = {
   /**
    * Login user
    */
-  login: async (email: string, password: string): Promise<AuthResponse> => {
+  login: async (email: string, password: string, userTypeHint?: string): Promise<AuthResponse> => {
     try {
-      const payload: LoginRequest = { email, password };
-      const response = await apiClient.post<AuthResponse>(
-        API_ENDPOINTS.AUTH.LOGIN,
-        payload
-      );
+      let data: AuthResponse | null = null;
+      let lastError: unknown = null;
 
-      const data = response.data;
+      for (const payload of buildLoginVariants(email, password, userTypeHint)) {
+        try {
+          const response = await apiClient.post<AuthResponse | { data: AuthResponse }>(
+            API_ENDPOINTS.AUTH.LOGIN,
+            payload
+          );
+          data = extractAuthResponse(response.data);
+          break;
+        } catch (error: any) {
+          lastError = error;
+          const status = error?.response?.status as number | undefined;
+          if (status !== 400) {
+            throw error;
+          }
+        }
+      }
+
+      if (!data) {
+        throw lastError instanceof Error ? lastError : new Error("Login failed");
+      }
 
       // If backend returned error message
       if (!data.token) {
@@ -106,8 +164,9 @@ export const authService = {
       localStorage.setItem("token", data.token);
       localStorage.setItem("authToken", data.token);
 
-      const normalizedRole = data.userType ?? data.role ?? null;
+      const normalizedRole = normalizeLoginRole(data.userType ?? data.role ?? null);
       data.role = normalizedRole;
+      data.userType = normalizedRole;
 
       // Store user type based on backend response
       if (normalizedRole === "VOLUNTEER") {

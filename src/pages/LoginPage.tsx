@@ -42,7 +42,7 @@ export function LoginPage({ onNavigate, onLogin, infoMessage, initialUserType = 
 
     try {
       setIsSubmitting(true);
-      const response = await authService.login(email, password);
+      const response = await authService.login(email, password, userType);
 
       if (!response.userType) {
         setError(response.message || 'Invalid credentials');

@@ -42,19 +42,47 @@ function toObjectiveList(value?: string): string[] | undefined {
   return objectives.length ? objectives : undefined;
 }
 
+function toBackendEnum(value?: string): string | undefined {
+  if (!value?.trim()) return undefined;
+
+  return value
+    .trim()
+    .replace(/&/g, " AND ")
+    .replace(/[^a-zA-Z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .replace(/_+/g, "_")
+    .toUpperCase();
+}
+
+function uniqueVariants(variants: ProjectCreateVariant[]): ProjectCreateVariant[] {
+  const seen = new Set<string>();
+
+  return variants.filter((variant) => {
+    const key = `${variant.endpoint}:${JSON.stringify(variant.payload)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 function buildCreateVariants(
   ngoId: string | number,
   payload: ProjectCreateRequest
 ): ProjectCreateVariant[] {
   const objectivesList = toObjectiveList(payload.objectives);
+  const enumCause = toBackendEnum(payload.cause);
+  const enumStatus = toBackendEnum(payload.status);
 
-  const basePayload: Record<string, unknown> = {
+  const basePayload = {
     title: payload.title.trim(),
     ...(payload.description?.trim() ? { description: payload.description.trim() } : {}),
     ...(payload.objectives?.trim() ? { objectives: payload.objectives.trim() } : {}),
     ...(payload.cause?.trim() ? { cause: payload.cause.trim() } : {}),
     ...(payload.location?.trim() ? { location: payload.location.trim() } : {}),
     ...(payload.status ? { status: payload.status } : {}),
+    ...(typeof payload.fundingGoal === "number" && !Number.isNaN(payload.fundingGoal)
+      ? { fundingGoal: payload.fundingGoal }
+      : { fundingGoal: 0 }),
     ...(payload.startDate ? { startDate: payload.startDate } : {}),
     ...(payload.endDate ? { endDate: payload.endDate } : {}),
     ...(typeof payload.beneficiaries === "number" && payload.beneficiaries > 0
@@ -69,11 +97,40 @@ function buildCreateVariants(
       : {}),
   };
 
+  const enumPayload: Record<string, unknown> = {
+    ...basePayload,
+    ...(enumCause ? { cause: enumCause } : {}),
+    ...(enumStatus ? { status: enumStatus } : {}),
+  };
+
+  const statuslessPayload: Record<string, unknown> = {
+    ...basePayload,
+  };
+  delete statuslessPayload.status;
+
+  const enumStatuslessPayload: Record<string, unknown> = {
+    ...enumPayload,
+  };
+  delete enumStatuslessPayload.status;
+
   const minimalPayload: Record<string, unknown> = {
     title: basePayload.title,
     ...(basePayload.description ? { description: basePayload.description } : {}),
     ...(basePayload.cause ? { cause: basePayload.cause } : {}),
     ...(basePayload.location ? { location: basePayload.location } : {}),
+    fundingGoal: basePayload.fundingGoal,
+    ...(basePayload.startDate ? { startDate: basePayload.startDate } : {}),
+    ...(basePayload.endDate ? { endDate: basePayload.endDate } : {}),
+    ...(typeof basePayload.beneficiaries === "number" ? { beneficiaries: basePayload.beneficiaries } : {}),
+    ...(typeof basePayload.volunteersNeeded === "number" ? { volunteersNeeded: basePayload.volunteersNeeded } : {}),
+  };
+
+  const enumMinimalPayload: Record<string, unknown> = {
+    title: basePayload.title,
+    ...(basePayload.description ? { description: basePayload.description } : {}),
+    ...(enumCause ? { cause: enumCause } : {}),
+    ...(basePayload.location ? { location: basePayload.location } : {}),
+    fundingGoal: basePayload.fundingGoal,
     ...(basePayload.startDate ? { startDate: basePayload.startDate } : {}),
     ...(basePayload.endDate ? { endDate: basePayload.endDate } : {}),
     ...(typeof basePayload.beneficiaries === "number" ? { beneficiaries: basePayload.beneficiaries } : {}),
@@ -85,28 +142,55 @@ function buildCreateVariants(
     ...(objectivesList ? { objectives: objectivesList } : {}),
   };
 
-  const baseWithNgoId = { ...basePayload, ngoId };
-  const minimalWithNgoId = { ...minimalPayload, ngoId };
-  const arrayObjectivesWithNgoId = { ...arrayObjectivesPayload, ngoId };
+  const enumArrayObjectivesPayload: Record<string, unknown> = {
+    ...enumMinimalPayload,
+    ...(objectivesList ? { objectives: objectivesList } : {}),
+  };
 
-  return [
+  const baseWithNgoId = { ...basePayload, ngoId };
+  const enumWithNgoId = { ...enumPayload, ngoId };
+  const statuslessWithNgoId = { ...statuslessPayload, ngoId };
+  const enumStatuslessWithNgoId = { ...enumStatuslessPayload, ngoId };
+  const minimalWithNgoId = { ...minimalPayload, ngoId };
+  const enumMinimalWithNgoId = { ...enumMinimalPayload, ngoId };
+  const arrayObjectivesWithNgoId = { ...arrayObjectivesPayload, ngoId };
+  const enumArrayObjectivesWithNgoId = { ...enumArrayObjectivesPayload, ngoId };
+
+  return uniqueVariants([
     { endpoint: API_ENDPOINTS.NGOS.PROJECTS(ngoId), payload: basePayload },
+    { endpoint: API_ENDPOINTS.NGOS.PROJECTS(ngoId), payload: enumPayload },
+    { endpoint: API_ENDPOINTS.NGOS.PROJECTS(ngoId), payload: statuslessPayload },
+    { endpoint: API_ENDPOINTS.NGOS.PROJECTS(ngoId), payload: enumStatuslessPayload },
     { endpoint: API_ENDPOINTS.NGOS.PROJECTS(ngoId), payload: minimalPayload },
+    { endpoint: API_ENDPOINTS.NGOS.PROJECTS(ngoId), payload: enumMinimalPayload },
     { endpoint: API_ENDPOINTS.NGOS.PROJECTS(ngoId), payload: arrayObjectivesPayload },
+    { endpoint: API_ENDPOINTS.NGOS.PROJECTS(ngoId), payload: enumArrayObjectivesPayload },
     { endpoint: API_ENDPOINTS.PROJECTS.CREATE, payload: baseWithNgoId },
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE, payload: enumWithNgoId },
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE, payload: statuslessWithNgoId },
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE, payload: enumStatuslessWithNgoId },
     { endpoint: API_ENDPOINTS.PROJECTS.CREATE, payload: minimalWithNgoId },
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE, payload: enumMinimalWithNgoId },
     { endpoint: API_ENDPOINTS.PROJECTS.CREATE, payload: arrayObjectivesWithNgoId },
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE, payload: enumArrayObjectivesWithNgoId },
     { endpoint: API_ENDPOINTS.PROJECTS.CREATE_ALT, payload: baseWithNgoId },
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE_ALT, payload: enumWithNgoId },
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE_ALT, payload: statuslessWithNgoId },
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE_ALT, payload: enumStatuslessWithNgoId },
     { endpoint: API_ENDPOINTS.PROJECTS.CREATE_ALT, payload: minimalWithNgoId },
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE_ALT, payload: enumMinimalWithNgoId },
     { endpoint: API_ENDPOINTS.PROJECTS.CREATE_ALT, payload: arrayObjectivesWithNgoId },
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE_ALT, payload: enumArrayObjectivesWithNgoId },
     { endpoint: API_ENDPOINTS.PROJECTS.CREATE_ALT, payload: minimalPayload },
-  ];
+    { endpoint: API_ENDPOINTS.PROJECTS.CREATE_ALT, payload: enumMinimalPayload },
+  ]);
 }
 
 export const projectService = {
   createProject: async (ngoId: string | number, data: ProjectCreateRequest): Promise<Project> => {
     const variants = buildCreateVariants(ngoId, data);
     let lastError: unknown = null;
+    let bestBadRequestError: unknown = null;
 
     for (const variant of variants) {
       try {
@@ -115,13 +199,16 @@ export const projectService = {
       } catch (error: any) {
         lastError = error;
         const status = error?.response?.status as number | undefined;
+        if (status === 400 && !bestBadRequestError) {
+          bestBadRequestError = error;
+        }
         if (!shouldRetryCreate(status)) {
           throw error;
         }
       }
     }
 
-    throw lastError;
+    throw bestBadRequestError ?? lastError;
   },
 
   /**

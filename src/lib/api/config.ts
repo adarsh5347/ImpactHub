@@ -1,6 +1,19 @@
+function getDefaultApiBaseUrl(): string {
+  if (typeof window !== "undefined") {
+    const { hostname } = window.location;
+    const isLocalHost = hostname === "localhost" || hostname === "127.0.0.1";
+
+    if (isLocalHost) {
+      return "/api";
+    }
+  }
+
+  return "http://localhost:8080/api";
+}
+
 function normalizeApiBaseUrl(url: string): string {
   const trimmed = url.trim().replace(/\/+$/, "");
-  if (!trimmed) return "http://localhost:8080/api";
+  if (!trimmed) return getDefaultApiBaseUrl();
 
   let parsed: URL;
   try {
@@ -26,7 +39,7 @@ const ENV_BASE_URL = normalizeApiBaseUrl(
   (typeof import.meta !== "undefined" &&
     ((import.meta as any).env?.VITE_API_BASE_URL ||
       (import.meta as any).env?.VITE_API_URL)) ||
-    "http://localhost:8080/api"
+    getDefaultApiBaseUrl()
 );
 
 export const API_CONFIG = {

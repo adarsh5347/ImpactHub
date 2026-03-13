@@ -269,6 +269,7 @@ export interface ProjectCreateRequest {
   cause?: string;
   location?: string;
   status?: ProjectStatus;
+  fundingGoal?: number;
   startDate?: string; // yyyy-mm-dd
   endDate?: string; // yyyy-mm-dd
   beneficiaries?: number;
@@ -284,6 +285,8 @@ export interface ProjectUpdateRequest {
   cause?: string;
   location?: string;
   status?: ProjectStatus;
+  fundingGoal?: number;
+  fundsRaised?: number;
   startDate?: string; // yyyy-mm-dd
   endDate?: string; // yyyy-mm-dd
   beneficiaries?: number;
@@ -302,6 +305,8 @@ export interface Project {
   cause?: string | null;
   location?: string | null;
   status: ProjectStatus;
+  fundingGoal?: number | null;
+  fundsRaised?: number | null;
   startDate?: string | null;
   endDate?: string | null;
   beneficiaries: number | null;

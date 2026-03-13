@@ -155,6 +155,7 @@ export function NGOAdminPanel({ onNavigate }: NGOAdminPanelProps) {
       .filter(Boolean);
     const title = String(form.get('title') || '').trim();
     const description = String(form.get('description') || '').trim();
+    const fundingGoalValue = Number(form.get('fundingGoal') || 0);
     const beneficiariesValue = Number(form.get('beneficiaries') || 0);
     const volunteersValue = Number(form.get('volunteers') || 0);
     const startDate = String(form.get('startDate') || '').trim();
@@ -165,6 +166,7 @@ export function NGOAdminPanel({ onNavigate }: NGOAdminPanelProps) {
       cause: projectCause,
       description,
       objectives: objectiveItems.length ? objectiveItems.join('\n') : undefined,
+      fundingGoal: fundingGoalValue,
       beneficiaries: beneficiariesValue,
       volunteersNeeded: volunteersValue,
       startDate: startDate || undefined,
@@ -180,6 +182,11 @@ export function NGOAdminPanel({ onNavigate }: NGOAdminPanelProps) {
 
     if (!payload.cause) {
       setProjectError('Cause category is required.');
+      return;
+    }
+
+    if (!Number.isFinite(fundingGoalValue) || fundingGoalValue <= 0) {
+      setProjectError('Funding goal must be greater than 0.');
       return;
     }
 
@@ -666,6 +673,18 @@ export function NGOAdminPanel({ onNavigate }: NGOAdminPanelProps) {
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                          <Label htmlFor="fundingGoal">Funding Goal</Label>
+                          <Input
+                            id="fundingGoal"
+                            name="fundingGoal"
+                            type="number"
+                            min="1"
+                            step="0.01"
+                            placeholder="50000"
+                            className="bg-white"
+                          />
+                        </div>
                         <div>
                           <Label htmlFor="beneficiaries">Beneficiaries</Label>
                           <Input id="beneficiaries" name="beneficiaries" type="number" placeholder="1000" className="bg-white" />
